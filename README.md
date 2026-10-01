@@ -3,7 +3,7 @@
 > **HTML-first micro-framework.** Router · template stamping · fluent API client · declarative data binding.
 > Zero dependencies · ~5 KB gzipped · no build step · no `eval` (CSP-friendly) · ESM + types.
 
-[![CI](https://github.com/YOUR-USERNAME/visualcompose/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-USERNAME/visualcompose/actions)
+[![CI](https://github.com/enrickaliberti/visualcompose/actions/workflows/ci.yml/badge.svg)](https://github.com/enrickaliberti/visualcompose/actions)
 [![npm](https://img.shields.io/npm/v/visualcompose)](https://www.npmjs.com/package/visualcompose)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
