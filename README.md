@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/visualcompose)](https://www.npmjs.com/package/visualcompose)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**[Live demo]([[https://enrickaliberti.github.io/visualcompose/](https://enrickaliberti.github.io/visualcompose/editor/)](https://enrickaliberti.github.io/visualcompose/editor/))** · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Italiano](README.it.md)
+**[Live demo](https://enrickaliberti.github.io/visualcompose/editor)** · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Italiano](README.it.md)
 
 ## Why
 
