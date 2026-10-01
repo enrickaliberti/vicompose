@@ -1,0 +1,3064 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>VisualCompose Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: { fontFamily: { mono: ['ui-monospace','SFMono-Regular','Menlo','Consolas','monospace'] } } } }
+    </script>
+    <style>
+        html, body { height: 100%; margin: 0; }
+        dialog::backdrop { background: rgba(15, 23, 42, .45); backdrop-filter: blur(4px); }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; background-clip: content-box; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .route-chip { display: inline-flex; align-items: center; gap: 3px; font-family: ui-monospace, monospace; font-size: 11px; padding: 2px 5px 2px 7px; border-radius: 5px; background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+        .route-chip input { width: 52px; background: #fff; border: 1px solid #c7d2fe; border-radius: 3px; padding: 1px 4px; font: inherit; font-size: 11px; outline: none; text-align: center; }
+        .route-chip input:focus { border-color: #6366f1; }
+        .filter-card { border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa; padding: 10px; margin-bottom: 8px; position: relative; transition: opacity 0.15s; }
+        .filter-card.fc-disabled { opacity: 0.5; background: #f3f4f6; }
+        .filter-card .fc-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .filter-card .fc-type { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 6px; border-radius: 4px; background: #eef2ff; color: #4f46e5; }
+        .filter-card .fc-row { display: grid; gap: 4px; margin-bottom: 6px; }
+        .filter-card .fc-row label { font-size: 10px; color: #6b7280; font-weight: 500; }
+        .filter-card select, .filter-card input[type="text"] {
+            width: 100%; padding: 5px 8px; font-size: 11px; font-family: ui-monospace, monospace;
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; outline: none;
+        }
+        .filter-card select:focus, .filter-card input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,0.15); }
+        .__vc-filter-menu { position: absolute; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 8px 24px rgba(15,23,42,.12); padding: 4px; min-width: 220px; z-index: 30; }
+        .__vc-filter-menu button { display: block; width: 100%; text-align: left; padding: 6px 10px; font-size: 12px; color: #374151; border-radius: 6px; background: transparent; border: 0; cursor: pointer; }
+        .__vc-filter-menu button:hover { background: #eef2ff; color: #4f46e5; }
+        .api-tree-row { padding: 2px 0; }
+        .api-tree-row:hover { background: #eef2ff; border-radius: 3px; }
+        .pipeline-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; font-family: ui-monospace, monospace; font-size: 10px; border-radius: 4px; background: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; }
+
+        #ctx-menu {
+            position: fixed; z-index: 100; min-width: 200px;
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.15);
+            padding: 4px; display: none;
+        }
+        #ctx-menu.open { display: block; }
+        #ctx-menu button {
+            display: flex; align-items: center; gap: 8px; width: 100%;
+            padding: 6px 10px; font-size: 12px; color: #374151; border-radius: 6px;
+            background: transparent; border: 0; cursor: pointer; text-align: left;
+        }
+        #ctx-menu button:hover:not(:disabled) { background: #eef2ff; color: #4f46e5; }
+        #ctx-menu button:disabled { opacity: 0.4; cursor: not-allowed; }
+        #ctx-menu button .kbd { margin-left: auto; font-size: 10px; color: #9ca3af; }
+        #ctx-menu .sep { height: 1px; background: #e5e7eb; margin: 4px 2px; }
+
+        .sidebar-tab.active { background: #fff; color: #4338ca; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .breadcrumb-item:hover { background: #eef2ff; color: #4338ca; }
+        .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .prop-menu {
+            position: fixed; z-index: 200; min-width: 160px;
+            background: #fff; border: 1px solid #e5e7eb; border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(15,23,42,.15);
+            padding: 4px;
+        }
+        .prop-menu button {
+            display: block; width: 100%; text-align: left;
+            padding: 5px 10px; font-size: 11px; font-family: ui-monospace, monospace;
+            color: #374151; border-radius: 5px;
+            background: transparent; border: 0; cursor: pointer;
+        }
+        .prop-menu button:hover { background: #eef2ff; color: #4f46e5; }
+        .prop-menu .divider { height: 1px; background: #f3f4f6; margin: 4px 2px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 overflow-hidden antialiased">
+
+<div class="flex flex-col h-screen">
+
+    <header class="h-14 bg-white border-b border-gray-200 flex items-center gap-3 px-4 flex-shrink-0 z-20">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
+            </div>
+            <span class="text-sm font-bold text-gray-800 whitespace-nowrap">VisualCompose</span>
+            <span class="text-[10px] font-medium text-gray-400 px-1.5 py-0.5 bg-gray-100 rounded whitespace-nowrap">Beta</span>
+        </div>
+
+        <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+        <div class="flex items-center gap-0.5">
+            <button type="button" id="btn-undo" title="Annulla (Ctrl+Z)" disabled
+                    class="icon-btn w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+            </button>
+            <button type="button" id="btn-redo" title="Ripeti (Ctrl+Shift+Z)" disabled
+                    class="icon-btn w-8 h-8 flex items-center justify-center rounded-md text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m15 15 6-6m0 0-6-6m6 6H9a6 6 0 0 0 0 12h3"/></svg>
+            </button>
+        </div>
+
+        <div class="w-px h-6 bg-gray-200 mx-1"></div>
+
+        <button type="button" id="btn-html" class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
+            HTML
+        </button>
+
+        <span id="autosave-badge" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 border border-emerald-100 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            <span id="autosave-time"></span>
+        </span>
+
+        <span id="draft-badge" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"/></svg>
+            Bozza disponibile
+            <button type="button" id="draft-restore" class="font-semibold hover:underline ml-0.5">Ripristina</button>
+            <button type="button" id="draft-dismiss" title="Elimina bozza" class="text-amber-500 hover:text-amber-800 ml-0.5 text-sm leading-none">×</button>
+        </span>
+
+        <span id="config-badge" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-100 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>
+            Config ripristinata
+        </span>
+
+        <span id="roots-indicator" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-purple-600 bg-purple-50 border border-purple-100 rounded-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
+            <span id="roots-count">0</span>
+        </span>
+
+        <div class="flex-1"></div>
+
+        <div class="flex bg-gray-100 rounded-lg p-0.5">
+            <button type="button" data-mode="edit" class="px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors">Modifica</button>
+            <button type="button" data-mode="preview" class="px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors">Visualizza</button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden min-h-0">
+        <main class="flex-1 bg-gray-100 relative overflow-hidden flex flex-col">
+            <div class="bg-white border-b border-gray-200 flex-shrink-0 z-10">
+                <div class="h-11 flex items-center gap-2 px-3 overflow-hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>
+
+                    <span class="text-xs font-mono text-gray-700 font-medium flex-shrink-0" id="route-file">example.html</span>
+
+                    <div class="flex bg-gray-100 rounded-md p-0.5 flex-shrink-0" id="route-mode-toggle">
+                        <button type="button" data-hashmode="1" title="Modalità MPA: i parametri vanno dopo # (user.html#/user/1)"
+                                class="px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors"># Hash</button>
+                        <button type="button" data-hashmode="0" title="Modalità Path: URL reale (richiede rewrite lato server)"
+                                class="px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors">/ Path</button>
+                    </div>
+
+                    <input type="text" id="route-pattern" placeholder="es. /user/:id  ·  :slug  ·  /user/:id/posts/:pid"
+                           class="flex-1 min-w-0 text-xs font-mono bg-transparent border-0 outline-none text-gray-700 placeholder:text-gray-300 ml-0.5">
+
+                    <span id="route-preview" class="text-[10.5px] font-mono text-gray-400 flex-shrink-0 truncate max-w-[260px] pl-2 border-l border-gray-100"></span>
+
+                    <div id="route-params-strip" class="hidden items-center gap-1.5 flex-shrink-0 pl-2 border-l border-gray-200"></div>
+                </div>
+            </div>
+
+            <div class="flex-1 relative">
+                <iframe id="iframe" class="absolute inset-0 w-full h-full border-0 bg-white block"></iframe>
+                <div id="hint" class="absolute top-3 left-1/2 -translate-x-1/2 bg-gray-900/85 text-white text-xs font-medium px-3.5 py-1.5 rounded-full opacity-0 transition-opacity pointer-events-none whitespace-nowrap backdrop-blur-sm z-30"></div>
+            </div>
+        </main>
+
+        <aside class="w-[360px] bg-white border-l border-gray-200 flex flex-col flex-shrink-0 overflow-hidden">
+            <div class="flex border-b border-gray-200 flex-shrink-0 px-1 pt-1 gap-1">
+                <button type="button" data-tab="tree"
+                        class="sidebar-tab active flex-1 px-3 py-2 text-[11px] font-semibold text-gray-500 rounded-t-md transition-colors flex items-center justify-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
+                    Struttura
+                </button>
+                <button type="button" data-tab="map"
+                        class="sidebar-tab flex-1 px-3 py-2 text-[11px] font-semibold text-gray-500 rounded-t-md transition-colors flex items-center justify-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"/></svg>
+                    Mappatura
+                    <span id="mapping-tab-badge" class="hidden text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-600 text-white font-mono"></span>
+                </button>
+            </div>
+
+            <div id="tab-tree" class="flex-1 flex flex-col min-h-0">
+                <div class="h-8 flex items-center gap-2 px-3 border-b border-gray-100 flex-shrink-0">
+                    <span id="active-root-label" class="text-[10px] text-purple-500 font-mono truncate flex-1"></span>
+                    <span id="tree-count" class="text-[10px] text-gray-400 font-mono">—</span>
+                </div>
+                <div class="flex-1 overflow-y-auto min-h-0 py-1" id="tree-host"></div>
+                <div class="px-3 py-1.5 border-t border-gray-100 bg-gray-50 flex items-center justify-between flex-shrink-0">
+                    <span class="text-[9.5px] text-gray-400">Dbl click: radice · Right click: menu</span>
+                    <button type="button" id="tree-expand-all" class="text-[9.5px] text-indigo-500 hover:text-indigo-700 font-medium">Espandi tutto</button>
+                </div>
+            </div>
+
+            <div id="tab-map" class="hidden flex-1 flex flex-col min-h-0">
+                <div id="root-api-bar" class="px-3 py-2.5 bg-gray-50 border-b border-gray-100 flex-shrink-0"></div>
+
+                <div id="fields-bar" class="hidden px-3 py-2 bg-white border-b border-gray-100 flex-shrink-0">
+                    <div class="flex items-center gap-1.5 mb-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5"/></svg>
+                        <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Campi rapidi</span>
+                        <span id="fields-count" class="ml-auto text-[9px] text-gray-400 font-mono"></span>
+                    </div>
+                    <div id="fields-chips" class="flex flex-wrap gap-1 max-h-20 overflow-y-auto"></div>
+                    <div class="text-[9.5px] text-gray-400 mt-1 italic">Clicca un campo per inserirlo nel campo espressione attivo.</div>
+                </div>
+
+                <div id="breadcrumb-host" class="hidden px-3 py-1.5 border-b border-gray-100 bg-white flex items-center gap-0.5 text-[10.5px] font-mono overflow-x-auto whitespace-nowrap flex-shrink-0"></div>
+
+                <div class="flex-1 overflow-y-auto min-h-0" id="props-host"></div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<div id="ctx-menu"></div>
+
+<dialog id="dlg-html" class="w-[560px] max-w-[90vw] p-0 rounded-xl shadow-2xl border border-gray-200 bg-white text-gray-900 overflow-hidden">
+    <div class="flex items-center px-5 py-3.5 border-b border-gray-100">
+        <h2 class="text-sm font-semibold text-gray-900">HTML del template</h2>
+        <button type="button" data-close class="ml-auto text-gray-400 hover:text-gray-600 w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+    <div class="p-5">
+        <label class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">Markup del template</label>
+        <textarea id="html-input" spellcheck="false" class="w-full h-72 px-3 py-2.5 text-xs font-mono leading-relaxed bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none resize-vertical text-gray-900"></textarea>
+    </div>
+    <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+        <button type="button" data-close class="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Annulla</button>
+        <button type="button" id="btn-html-save" class="px-4 py-2 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm">Salva e ricarica</button>
+    </div>
+</dialog>
+
+<dialog id="dlg-api" class="w-[720px] max-w-[94vw] p-0 rounded-xl shadow-2xl border border-gray-200 bg-white text-gray-900 overflow-hidden relative">
+    <div class="flex items-center px-5 py-3.5 border-b border-gray-100">
+        <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 bg-indigo-50 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><ellipse cx="12" cy="6" rx="8" ry="3"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+            </div>
+            <div>
+                <h2 class="text-sm font-semibold text-gray-900">API &amp; Filtri</h2>
+                <div class="text-[10.5px] text-gray-400 font-mono" id="dlg-api-root">—</div>
+            </div>
+        </div>
+        <button type="button" data-close class="ml-auto text-gray-400 hover:text-gray-600 w-7 h-7 flex items-center justify-center rounded-md hover:bg-gray-100">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
+
+    <div class="max-h-[75vh] overflow-y-auto">
+        <div class="p-5 pb-4">
+            <label class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">URL JSON</label>
+            <div class="flex gap-2">
+                <input type="text" id="api-input" placeholder="./sample-users.json  •  https://api.example.com/users  •  /api/users/:id"
+                       class="flex-1 px-3 py-2 text-xs font-mono bg-gray-50 border border-gray-200 rounded-lg focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 outline-none text-gray-900">
+                <button type="button" id="btn-api-load" class="px-3 py-2 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 shadow-sm whitespace-nowrap">Carica</button>
+            </div>
+            <div id="api-url-preview" class="mt-1.5 text-[10.5px] font-mono text-gray-400 min-h-[1em]"></div>
+            <div id="api-dialog-status" class="mt-2 text-[11px] text-gray-400 min-h-[1em]"></div>
+            <div id="api-route-params" class="mt-3"></div>
+            <div id="api-view-tabs" class="hidden mt-4 flex gap-1 border-b border-gray-100"></div>
+            <div id="api-tree" hidden class="mt-2 p-2 text-[10.5px] font-mono bg-gray-50 border border-gray-100 rounded-lg max-h-64 overflow-auto"></div>
+            <div id="api-sample" hidden class="mt-2 p-2.5 text-[10.5px] font-mono text-gray-500 bg-gray-50 border border-gray-100 rounded-lg max-h-64 overflow-auto whitespace-pre"></div>
+        </div>
+
+        <div id="filters-section" class="border-t border-gray-100">
+            <div class="flex items-center gap-2 px-5 py-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z"/></svg>
+                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Filtri &amp; trasformazioni</span>
+                <div class="flex-1"></div>
+                <button type="button" id="btn-add-filter" class="inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 bg-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+                    Aggiungi
+                </button>
+            </div>
+            <div id="filters-host" class="px-5 pb-5"></div>
+        </div>
+    </div>
+
+    <div class="flex justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+        <button type="button" data-close class="px-4 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">Chiudi</button>
+    </div>
+</dialog>
+
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-4 px-4 py-2 bg-gray-900 text-white text-xs font-medium rounded-lg shadow-xl opacity-0 pointer-events-none transition-all duration-200 z-50"></div>
+
+<script>
+    (() => {
+        'use strict';
+
+        // =====================================================================
+        // CONFIGURAZIONE STATICA (nessun PHP)
+        // =====================================================================
+        const VC_CDN_URL = 'https://cdn.jsdelivr.net/npm/visualcompose@0.1.0/dist/visualcompose.min.js';
+
+        const INITIAL_FILE = 'example.html';
+
+        // Template di esempio: una directory di persone.
+        // Puoi modificarlo/aprire il dialogo "HTML" per sperimentare.
+        const INITIAL_HTML = `
+<div class="page">
+  <header class="page-header">
+    <h1>Team Directory</h1>
+    <p class="lead">Un semplice elenco di persone</p>
+  </header>
+
+  <ul class="members">
+    <li class="member">
+      <div class="avatar"></div>
+      <div class="info">
+        <h3 class="name">Jane Doe</h3>
+        <p class="email">jane@example.com</p>
+      </div>
+    </li>
+    <li class="member">
+      <div class="avatar"></div>
+      <div class="info">
+        <h3 class="name">John Smith</h3>
+        <p class="email">john@example.com</p>
+      </div>
+    </li>
+  </ul>
+</div>`.trim();
+
+        const INITIAL_HEAD = `
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f9fafb; color: #111827; padding: 32px 16px; margin: 0; }
+  .page { max-width: 720px; margin: 0 auto; }
+  .page-header { margin-bottom: 32px; }
+  .page-header h1 { font-size: 28px; margin: 0 0 8px; font-weight: 700; letter-spacing: -0.02em; }
+  .page-header .lead { color: #6b7280; margin: 0; font-size: 15px; }
+  .members { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+  .member { display: flex; align-items: center; gap: 16px; background: #fff; padding: 16px; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.03); transition: box-shadow .15s; }
+  .member:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+  .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a855f7); flex-shrink: 0; }
+  .info { min-width: 0; }
+  .name { margin: 0; font-size: 15px; font-weight: 600; }
+  .email { margin: 2px 0 0; color: #6b7280; font-size: 13px; }
+</style>`.trim();
+
+        const INITIAL_CONFIG = ''; // nessuna config pre-caricata
+        const LOAD_ERROR     = '';
+
+        const AUTOSAVE_KEY   = 'vc_editor_autosave_v1';
+        const MAX_SAMPLE_ITEMS = 50;
+
+        const BOOL_ATTRS = new Set([
+            'checked','selected','disabled','hidden','readonly','multiple',
+            'required','autofocus','open','novalidate','formnovalidate',
+            'loop','muted','autoplay','controls','default','defer','async',
+            'ismap','nomodule','reversed','scoped','itemscope','allowfullscreen'
+        ]);
+
+        function h(tag, attrs = {}, ...children) {
+            const el = document.createElement(tag);
+            for (const [k, v] of Object.entries(attrs)) {
+                if (k.startsWith('on') && typeof v === 'function') {
+                    el.addEventListener(k.substring(2).toLowerCase(), v);
+                } else if (k === 'className') {
+                    el.className = v;
+                } else if (k === 'dataset') {
+                    Object.assign(el.dataset, v);
+                } else if (k === 'html') {
+                    el.innerHTML = v;
+                } else if (k === 'style') {
+                    el.setAttribute('style', v);
+                } else if (BOOL_ATTRS.has(k)) {
+                    if (v) el.setAttribute(k, '');
+                } else if (v != null) {
+                    el.setAttribute(k, v);
+                }
+            }
+            children.flat().forEach(child => {
+                if (child == null) return;
+                el.appendChild(typeof child === 'string' || typeof child === 'number'
+                    ? document.createTextNode(child)
+                    : child);
+            });
+            return el;
+        }
+
+        const state = {
+            html: INITIAL_HTML || '',
+            head: INITIAL_HEAD || '',
+            file: INITIAL_FILE || 'example.html',
+            routePattern: '',
+            routeHashMode: true,
+            roots: new Map(),
+            activeRootSelector: null,
+            selected: null,
+            mode: 'edit',
+            previewParamValues: {},
+            treeCollapsed: new Set(),
+            sidebarTab: 'tree',
+            _hintShown: false
+        };
+
+        let lastFocusedExprInput = null;
+
+        const BASE_CSS = `
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; margin: 0; background: #f9fafb; color: #111827; }
+  img { max-width: 100%; }
+  a { color: #4f46e5; }
+`;
+
+        const OVERLAY_CSS = `
+  .__vc-hover { outline: 2px dashed #6366f1 !important; outline-offset: -2px; cursor: pointer !important; }
+  .__vc-sel   { outline: 2px solid #f97316 !important; outline-offset: -2px; position: relative !important; }
+  .__vc-root  { outline: 3px solid #9333ea !important; outline-offset: -2px; }
+  [contenteditable="true"] { outline: 2px solid #6366f1 !important; outline-offset: 2px; background: rgba(99, 102, 241, 0.05); }
+
+  .__vc-toolbar {
+    position: absolute !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    background: #1e293b !important;
+    color: #ffffff !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+    font-family: system-ui, -apple-system, sans-serif !important;
+    font-size: 11px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+    pointer-events: auto !important;
+    user-select: none !important;
+    transform: translateY(-100%);
+    margin-top: -4px;
+  }
+  .__vc-toolbar button {
+    background: transparent !important;
+    border: 0 !important;
+    color: #cbd5e1 !important;
+    cursor: pointer !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background-color 0.15s, color 0.15s !important;
+  }
+  .__vc-toolbar button:hover {
+    background: #334155 !important;
+    color: #ffffff !important;
+  }
+  .__vc-toolbar button.vc-btn-del:hover {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
+  .__vc-toolbar .vc-tag-label {
+    font-family: monospace !important;
+    font-size: 10px !important;
+    color: #94a3b8 !important;
+    margin-right: 4px !important;
+    border-right: 1px solid #334155 !important;
+    padding-right: 6px !important;
+  }
+`;
+
+        const SKIP = new Set(['SCRIPT','STYLE','LINK','META','NOSCRIPT','TEMPLATE']);
+        const VOID_TAGS = new Set(['IMG','INPUT','BR','HR','SOURCE','TRACK','EMBED','AREA','BASE','COL','LINK','META','PARAM','WBR']);
+
+        const $ = (id) => document.getElementById(id);
+        const iframe            = $('iframe');
+        const treeHost          = $('tree-host');
+        const treeCount         = $('tree-count');
+        const activeRootLabel   = $('active-root-label');
+        const rootsIndicator    = $('roots-indicator');
+        const rootsCount        = $('roots-count');
+        const propsHost         = $('props-host');
+        const mappingBadge      = $('mapping-tab-badge');
+        const rootApiBar        = $('root-api-bar');
+        const hintEl            = $('hint');
+        const toastEl           = $('toast');
+        const fieldsBar         = $('fields-bar');
+        const fieldsChips       = $('fields-chips');
+        const fieldsCount       = $('fields-count');
+        const routeFileEl       = $('route-file');
+        const routePatternInp   = $('route-pattern');
+        const routeParamsStrip  = $('route-params-strip');
+        const filtersHost       = $('filters-host');
+        const ctxMenu           = $('ctx-menu');
+        const breadcrumbHost    = $('breadcrumb-host');
+
+        // ---------------------------------------------------------------
+        // UTILS
+        // ---------------------------------------------------------------
+        function cssEscape(s) {
+            return window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/[^a-zA-Z0-9_-]/g, '\\$&');
+        }
+        function escapeHtml(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function ensureVcId(node) {
+            if (!node || node.nodeType !== 1) return null;
+            if (!node.dataset.vcId) {
+                node.dataset.vcId = 'vc-' + Math.random().toString(36).substring(2, 9);
+            }
+            return node.dataset.vcId;
+        }
+        function isUniqueIn(sel, scope, target) {
+            try { const m = scope.querySelectorAll(sel); return m.length === 1 && m[0] === target; }
+            catch { return false; }
+        }
+
+        function buildSelector(node, stopAt = node.ownerDocument.body) {
+            if (node === stopAt) return '';
+            const parts = [];
+            let cur = node;
+            while (cur && cur !== stopAt) {
+                const parent = cur.parentElement;
+                if (!parent) break;
+
+                if (cur.id && !cur.id.startsWith('__vc')) {
+                    const sel = '#' + cssEscape(cur.id);
+                    if (isUniqueIn(sel, stopAt, cur)) { parts.unshift(sel); break; }
+                }
+                const tag = cur.tagName.toLowerCase();
+                const classes = Array.from(cur.classList).filter(c => !c.startsWith('__vc'));
+                if (classes.length > 0) {
+                    const sel = tag + '.' + classes.map(cssEscape).join('.');
+                    if (isUniqueIn(sel, stopAt, cur)) { parts.unshift(sel); break; }
+                }
+                if (isUniqueIn(tag, stopAt, cur)) { parts.unshift(tag); break; }
+                if (cur.dataset && cur.dataset.vcId) {
+                    parts.unshift(`[data-vc-id="${cur.dataset.vcId}"]`);
+                    break;
+                }
+                const idx = Array.from(parent.children).indexOf(cur) + 1;
+                parts.unshift(`${tag}:nth-child(${idx})`);
+                cur = parent;
+            }
+            return parts.join(' > ');
+        }
+
+        function getActiveRoot() {
+            return state.activeRootSelector ? (state.roots.get(state.activeRootSelector) || null) : null;
+        }
+        function relSelector(node) {
+            const root = getActiveRoot();
+            if (!root) return '';
+            return node === root.node ? state.activeRootSelector : buildSelector(node, root.node);
+        }
+        function isDescendant(node, ancestor) {
+            let cur = node;
+            while (cur) { if (cur === ancestor) return true; cur = cur.parentElement; }
+            return false;
+        }
+
+        function propsForTag(tag) {
+            switch (tag.toUpperCase()) {
+                case 'IMG':      return ['src', 'alt'];
+                case 'A':        return ['text', 'href'];
+                case 'INPUT':    return ['value', 'placeholder'];
+                case 'TEXTAREA': return ['value'];
+                case 'SELECT':   return ['value'];
+                case 'OPTION':   return ['value'];
+                case 'BUTTON':   return ['text'];
+                case 'VIDEO': case 'AUDIO': case 'SOURCE': case 'IFRAME': return ['src'];
+                case 'META':     return ['content'];
+                case 'TIME':     return ['text', 'datetime'];
+                default:         return ['text'];
+            }
+        }
+
+        function defaultPropsFor(node) {
+            const candidates = propsForTag(node.tagName);
+            const hasElementChildren = Array.from(node.children).some(c => c.nodeType === 1);
+            if (hasElementChildren) {
+                return candidates.filter(p => p !== 'text' && p !== 'html');
+            }
+            return candidates;
+        }
+
+        const PROP_SUGGESTIONS_BY_TAG = {
+            IMG:      ['src', 'alt', 'title', 'width', 'height', 'loading'],
+            A:        ['href', 'text', 'title', 'target', 'rel'],
+            INPUT:    ['value', 'placeholder', 'disabled', 'checked', 'type', 'name'],
+            TEXTAREA: ['value', 'placeholder', 'disabled'],
+            SELECT:   ['value', 'disabled', 'name'],
+            OPTION:   ['value', 'text', 'selected'],
+            BUTTON:   ['text', 'disabled', 'type', 'title'],
+            VIDEO:    ['src', 'poster', 'title'],
+            AUDIO:    ['src', 'title'],
+            IFRAME:   ['src', 'title'],
+            TIME:     ['datetime', 'text'],
+            META:     ['content'],
+            DEFAULT:  ['text', 'html', 'class', 'style', 'title', 'hidden', 'disabled', 'data-state']
+        };
+
+        function extractParams(str) {
+            if (!str) return [];
+            const out = [];
+            const re = /:([a-zA-Z_][a-zA-Z0-9_]*)/g;
+            let m;
+            while ((m = re.exec(str)) !== null) {
+                if (!out.includes(m[1])) out.push(m[1]);
+            }
+            return out;
+        }
+        function normalizePattern(p) {
+            p = (p || '').trim();
+            if (!p) return '';
+            p = p.replace(/^#/, '');
+            return p.startsWith('/') ? p : '/' + p;
+        }
+        function getFullPattern() {
+            const p = (state.routePattern || '').trim();
+            if (state.routeHashMode) return p ? '#' + p : '#/*';
+            return p || '*';
+        }
+        function paramFromValue(v) {
+            v = (v || '').trim();
+            const m = v.match(/^:([a-zA-Z_][a-zA-Z0-9_]*)/);
+            return m ? m[1] : null;
+        }
+
+        // ---------------------------------------------------------------
+        // HISTORY
+        // ---------------------------------------------------------------
+        const history = {
+            stack: [],
+            index: -1,
+            max: 60,
+            _debounce: null,
+            _applying: false,
+
+            snapshot() {
+                const rootsArr = [];
+                for (const [sel, entry] of state.roots) {
+                    rootsArr.push([sel, {
+                        api: entry.api ? {
+                            url: entry.api.url,
+                            fields: entry.api.fields.slice(),
+                            sampleItem: entry.api.sampleItem,
+                            sampleData: entry.api.sampleData
+                        } : null,
+                        filters: JSON.parse(JSON.stringify(entry.filters || [])),
+                        mappings: [...entry.mappings].map(([rel, m]) => [rel, JSON.parse(JSON.stringify(m.props))])
+                    }]);
+                }
+                return JSON.stringify({
+                    html: state.html,
+                    routePattern: state.routePattern,
+                    routeHashMode: state.routeHashMode,
+                    roots: rootsArr,
+                    treeCollapsed: [...state.treeCollapsed],
+                    activeRootSelector: state.activeRootSelector
+                });
+            },
+
+            pushNow(label) {
+                if (this._applying) return;
+                const snap = this.snapshot();
+                if (this.stack[this.index] === snap) return;
+                this.stack.splice(this.index + 1);
+                this.stack.push(snap);
+                if (this.stack.length > this.max) this.stack.shift();
+                this.index = this.stack.length - 1;
+                this._updateUI();
+            },
+
+            push(label, delay = 0) {
+                if (this._applying) return;
+                if (delay === 0) return this.pushNow(label);
+                clearTimeout(this._debounce);
+                this._debounce = setTimeout(() => this.pushNow(label), delay);
+            },
+
+            canUndo() { return this.index > 0; },
+            canRedo() { return this.index < this.stack.length - 1; },
+
+            undo() {
+                clearTimeout(this._debounce);
+                if (!this.canUndo()) return;
+                this.index--;
+                this._apply();
+                this._updateUI();
+                toast('↶ Annullato');
+            },
+            redo() {
+                clearTimeout(this._debounce);
+                if (!this.canRedo()) return;
+                this.index++;
+                this._apply();
+                this._updateUI();
+                toast('↷ Ripetuto');
+            },
+
+            _apply() {
+                const snap = JSON.parse(this.stack[this.index]);
+                const doc = iframe.contentDocument;
+
+                this._applying = true;
+
+                const htmlChanged = snap.html !== state.html;
+                state.html = snap.html;
+                state.routePattern = snap.routePattern || '';
+                state.routeHashMode = snap.routeHashMode !== false;
+                state.treeCollapsed = new Set(snap.treeCollapsed || []);
+                state.selected = null;
+
+                if (htmlChanged && doc && doc.body) {
+                    doc.querySelectorAll('.__vc-hover, .__vc-sel, .__vc-root').forEach(n => {
+                        n.classList.remove('__vc-hover', '__vc-sel', '__vc-root');
+                    });
+                    const tb = doc.getElementById('__vc_toolbar');
+                    if (tb) tb.remove();
+
+                    doc.body.innerHTML = snap.html;
+                    updateToolbar(null);
+                }
+
+                const newRoots = new Map();
+                for (const [sel, data] of snap.roots) {
+                    const node = doc ? doc.querySelector(sel) : null;
+                    if (!node) continue;
+                    const mappings = new Map(data.mappings.map(([rel, props]) => [rel, { props }]));
+                    newRoots.set(sel, {
+                        node,
+                        api: data.api,
+                        filters: data.filters,
+                        mappings
+                    });
+                }
+                state.roots = newRoots;
+
+                state.activeRootSelector = snap.activeRootSelector || null;
+                if (state.activeRootSelector && !newRoots.has(state.activeRootSelector)) {
+                    state.activeRootSelector = null;
+                }
+                if (state.activeRootSelector) {
+                    newRoots.get(state.activeRootSelector).node.classList.add('__vc-root');
+                }
+
+                refreshAll();
+                this._applying = false;
+            },
+
+            _updateUI() {
+                $('btn-undo').disabled = !this.canUndo();
+                $('btn-redo').disabled = !this.canRedo();
+            }
+        };
+
+        $('btn-undo').addEventListener('click', () => history.undo());
+        $('btn-redo').addEventListener('click', () => history.redo());
+
+        // ---------------------------------------------------------------
+        // RESTORE CONFIG (utile se in futuro carichi una config inline)
+        // ---------------------------------------------------------------
+        function restoreConfig(cfg) {
+            if (!cfg || cfg.version !== 1) return false;
+
+            if (typeof cfg.routePattern === 'string') {
+                state.routePattern = cfg.routePattern;
+            }
+            if (typeof cfg.routeHashMode === 'boolean') {
+                state.routeHashMode = cfg.routeHashMode;
+            }
+
+            const doc = iframe.contentDocument;
+            let restored = 0;
+
+            if (Array.isArray(cfg.roots)) {
+                for (const r of cfg.roots) {
+                    if (!r || !r.sel) continue;
+                    const node = doc ? doc.querySelector(r.sel) : null;
+                    if (!node) continue;
+
+                    const mappings = new Map(
+                        (r.mappings || []).map(m => [m.rel, { props: m.props || [] }])
+                    );
+
+                    state.roots.set(r.sel, {
+                        node,
+                        api: r.api || null,
+                        filters: Array.isArray(r.filters) ? r.filters : [],
+                        mappings
+                    });
+                    restored++;
+                }
+            }
+
+            if (cfg.activeRootSelector && state.roots.has(cfg.activeRootSelector)) {
+                state.activeRootSelector = cfg.activeRootSelector;
+            } else if (state.roots.size > 0) {
+                state.activeRootSelector = state.roots.keys().next().value;
+            }
+
+            if (doc && state.activeRootSelector) {
+                doc.querySelectorAll('.__vc-root').forEach(n => n.classList.remove('__vc-root'));
+                const activeNode = state.roots.get(state.activeRootSelector)?.node;
+                if (activeNode) activeNode.classList.add('__vc-root');
+            }
+
+            return restored > 0;
+        }
+
+        // ---------------------------------------------------------------
+        // AUTOSAVE + DRAFT
+        // ---------------------------------------------------------------
+        const autosave = {
+            timer: null,
+            start() {
+                this.timer = setInterval(() => this.save(), 30000);
+                window.addEventListener('beforeunload', () => this.save(true));
+            },
+            save(quick = false) {
+                try {
+                    if (state.mode === 'edit') syncStateFromIframe();
+                    const snap = {
+                        file: state.file,
+                        html: state.html,
+                        head: state.head,
+                        routePattern: state.routePattern,
+                        routeHashMode: state.routeHashMode,
+                        savedAt: Date.now()
+                    };
+                    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snap));
+                    if (!quick) {
+                        const badge = $('autosave-badge');
+                        $('autosave-time').textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+                        badge.classList.remove('hidden');
+                    }
+                } catch {}
+            },
+            getDraft() {
+                try {
+                    const raw = localStorage.getItem(AUTOSAVE_KEY);
+                    if (!raw) return null;
+                    const snap = JSON.parse(raw);
+                    if (snap.file !== state.file) return null;
+                    if (!snap.html) return null;
+                    if (snap.html === INITIAL_HTML) return null;
+                    return snap;
+                } catch { return null; }
+            },
+            applyDraft(snap) {
+                state.html = snap.html;
+                state.head = snap.head || state.head;
+                state.routePattern = snap.routePattern || '';
+                state.routeHashMode = snap.routeHashMode !== false;
+            },
+            clear() {
+                try { localStorage.removeItem(AUTOSAVE_KEY); } catch {}
+                $('draft-badge').classList.add('hidden');
+            }
+        };
+
+        function updateDraftBadge() {
+            const draft = autosave.getDraft();
+            const badge = $('draft-badge');
+            if (draft) badge.classList.remove('hidden');
+            else badge.classList.add('hidden');
+        }
+
+        $('draft-restore').addEventListener('click', async () => {
+            const draft = autosave.getDraft();
+            if (!draft) { $('draft-badge').classList.add('hidden'); return; }
+            autosave.applyDraft(draft);
+            $('draft-badge').classList.add('hidden');
+            state.roots.clear();
+            state.activeRootSelector = null;
+            state.selected = null;
+            state.treeCollapsed.clear();
+            await renderCanvas();
+            instrument();
+            refreshAll();
+            history.pushNow('Ripristina bozza');
+            toast('Bozza ripristinata');
+        });
+
+        $('draft-dismiss').addEventListener('click', () => {
+            autosave.clear();
+        });
+
+        // ---------------------------------------------------------------
+        // SYNC CANVAS
+        // ---------------------------------------------------------------
+        function syncStateFromIframe() {
+            if (state.mode !== 'edit') return;
+            const doc = iframe.contentDocument;
+            if (!doc || !doc.body) return;
+
+            const clone = doc.body.cloneNode(true);
+            const tb = clone.querySelector('#__vc_toolbar');
+            if (tb) tb.remove();
+
+            const walker = doc.createTreeWalker(clone, NodeFilter.SHOW_COMMENT);
+            const comments = [];
+            while (walker.nextNode()) {
+                if (/^vc-config:/.test(walker.currentNode.nodeValue || '')) {
+                    comments.push(walker.currentNode);
+                }
+            }
+            comments.forEach(n => n.remove());
+
+            clone.classList.remove('__vc-root', '__vc-sel', '__vc-hover');
+            clone.querySelectorAll('.__vc-root, .__vc-sel, .__vc-hover').forEach(n => {
+                n.classList.remove('__vc-root', '__vc-sel', '__vc-hover');
+            });
+            clone.querySelectorAll('[contenteditable]').forEach(n => {
+                n.removeAttribute('contenteditable');
+            });
+            clone.querySelectorAll('[class=""]').forEach(n => n.removeAttribute('class'));
+            if (!clone.getAttribute('class')) clone.removeAttribute('class');
+
+            state.html = clone.innerHTML;
+        }
+
+        // ---------------------------------------------------------------
+        // EXPRESSION HELPERS
+        // ---------------------------------------------------------------
+        function getPath(obj, path) {
+            if (!path) return undefined;
+            return String(path).split('.').reduce((acc, k) => (acc == null ? undefined : acc[k]), obj);
+        }
+
+        function detectExprMode(expr) {
+            const e = (expr || '').trim();
+            if (!e)                       return 'empty';
+            if (e.includes('{{'))         return 'template';
+            if (e === '$index')           return 'index';
+            if (e.startsWith('params.'))  return 'param';
+            if (e.startsWith('item.'))    return 'path-item';
+            if (/^[\w.]+$/.test(e))       return 'path';
+            return 'expr';
+        }
+
+        function evaluateExpr(expr, item) {
+            const e = (expr || '').trim();
+            if (!e) return '';
+            try {
+                const mode = detectExprMode(e);
+                if (mode === 'template') {
+                    if (!item) return '(carica API per anteprima)';
+                    return e.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, p) => getPath(item, p) ?? '');
+                }
+                if (mode === 'index') return 0;
+                if (mode === 'param') {
+                    const key = e.slice(7);
+                    const v = state.previewParamValues[key];
+                    return v !== undefined ? v : `(params.${key})`;
+                }
+                if (mode === 'path' || mode === 'path-item') {
+                    if (!item) return '(carica API per anteprima)';
+                    const path = mode === 'path-item' ? e.slice(5) : e;
+                    return getPath(item, path) ?? '';
+                }
+                if (!item) return '(carica API per anteprima)';
+                return new Function('item','index','params', `return (${e});`)(item, 0, {}) ?? '';
+            } catch (err) {
+                return '⚠ ' + err.message;
+            }
+        }
+
+        function escapeForTemplate(s) {
+            return s.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+        }
+
+        function expressionToLive(expr) {
+            const e = (expr || '').trim();
+            if (!e) return null;
+            const mode = detectExprMode(e);
+            if (mode === 'path' || mode === 'param') return e;
+            if (mode === 'path-item') return new Function('item', 'return item.' + e.slice(5));
+            if (mode === 'index') return (item, index) => index;
+            if (mode === 'template') {
+                const re = /\{\{\s*([\w.]+)\s*\}\}/g;
+                let body = 'return `', last = 0, m;
+                while ((m = re.exec(e)) !== null) {
+                    body += escapeForTemplate(e.slice(last, m.index)) + '${item.' + m[1] + '}';
+                    last = m.index + m[0].length;
+                }
+                body += escapeForTemplate(e.slice(last)) + '`;';
+                return new Function('item','index','params', body);
+            }
+            return new Function('item','index','params', 'return (' + e + ');');
+        }
+
+        // ---------------------------------------------------------------
+        // TOAST / HINT
+        // ---------------------------------------------------------------
+        let toastT = null;
+        function toast(msg, isErr = false) {
+            toastEl.textContent = msg;
+            toastEl.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 text-white text-xs font-medium rounded-lg shadow-xl transition-all duration-200 z-50 ${isErr ? 'bg-red-600' : 'bg-gray-900'}`;
+            toastEl.classList.remove('opacity-0', 'translate-y-4');
+            clearTimeout(toastT);
+            toastT = setTimeout(() => toastEl.classList.add('opacity-0', 'translate-y-4'), 2500);
+        }
+        let hintT = null;
+        function hint(msg, ms = 2000) {
+            hintEl.textContent = msg;
+            hintEl.classList.remove('opacity-0');
+            clearTimeout(hintT);
+            hintT = setTimeout(() => hintEl.classList.add('opacity-0'), ms);
+        }
+
+        // ---------------------------------------------------------------
+        // INPUT TARGETING
+        // ---------------------------------------------------------------
+        function getActiveExprInput() {
+            const active = document.activeElement;
+            if (active && active.matches && active.matches('[data-vc-expr]')) return active;
+
+            if (lastFocusedExprInput && lastFocusedExprInput.isConnected
+                && lastFocusedExprInput.matches
+                && lastFocusedExprInput.matches('[data-vc-expr]')) {
+                return lastFocusedExprInput;
+            }
+
+            return propsHost.querySelector('[data-vc-expr]');
+        }
+
+        function insertTextIntoActiveInput(text, { fallbackInput = null } = {}) {
+            const input = fallbackInput || getActiveExprInput();
+            if (!input) {
+                toast('Nessun campo espressione attivo. Seleziona un nodo e aggiungi una proprietà.', true);
+                return false;
+            }
+
+            const start = input.selectionStart ?? input.value.length;
+            const end   = input.selectionEnd   ?? input.value.length;
+            input.value = input.value.slice(0, start) + text + input.value.slice(end);
+            const pos = start + text.length;
+            input.setSelectionRange(pos, pos);
+            input.focus();
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+        }
+
+        function insertFieldIntoActiveInput(text) {
+            insertTextIntoActiveInput(text);
+        }
+
+        // ---------------------------------------------------------------
+        // SIDEBAR TABS
+        // ---------------------------------------------------------------
+        function setSidebarTab(tab) {
+            state.sidebarTab = tab;
+            document.querySelectorAll('.sidebar-tab').forEach(b => {
+                b.classList.toggle('active', b.dataset.tab === tab);
+            });
+            $('tab-tree').classList.toggle('hidden', tab !== 'tree');
+            $('tab-map').classList.toggle('hidden', tab !== 'map');
+            if (tab === 'map') {
+                renderApiBar();
+                renderFieldsBar();
+                renderBreadcrumb();
+                renderProps();
+            } else {
+                buildTree();
+            }
+        }
+        document.querySelectorAll('.sidebar-tab').forEach(b => {
+            b.addEventListener('click', () => setSidebarTab(b.dataset.tab));
+        });
+
+        // ---------------------------------------------------------------
+        // CANVAS
+        // ---------------------------------------------------------------
+        function renderCanvas() {
+            return new Promise(resolve => {
+                iframe.onload = () => resolve();
+                iframe.srcdoc = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${BASE_CSS}</style>${state.head || ''}<style id="__vc_overlay">${OVERLAY_CSS}</style></head><body>${state.html}</body></html>`;
+            });
+        }
+
+        function updateToolbar(node) {
+            const doc = iframe.contentDocument;
+            if (!doc) return;
+            let tb = doc.getElementById('__vc_toolbar');
+
+            if (!node || state.mode !== 'edit') {
+                if (tb) tb.remove();
+                return;
+            }
+            if (!tb) {
+                tb = doc.createElement('div');
+                tb.id = '__vc_toolbar';
+                tb.className = '__vc-toolbar';
+                doc.body.appendChild(tb);
+            }
+
+            const tag = node.tagName.toLowerCase();
+            tb.innerHTML = `
+                <span class="vc-tag-label">&lt;${tag}&gt;</span>
+                <button type="button" class="vc-btn-dup" title="Duplica elemento (Ctrl+D)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <button type="button" class="vc-btn-del" title="Elimina elemento (Canc)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                </button>
+            `;
+            tb.querySelector('.vc-btn-dup').onclick = (e) => { e.stopPropagation(); e.preventDefault(); duplicateNode(node); };
+            tb.querySelector('.vc-btn-del').onclick = (e) => { e.stopPropagation(); e.preventDefault(); deleteNode(node); };
+
+            const rect = node.getBoundingClientRect();
+            const scrollX = doc.defaultView.scrollX || doc.documentElement.scrollLeft;
+            const scrollY = doc.defaultView.scrollY || doc.documentElement.scrollTop;
+            let top = rect.top + scrollY;
+            if (top < 28) top = rect.bottom + scrollY + 28;
+            tb.style.top = top + 'px';
+            tb.style.left = (rect.left + scrollX) + 'px';
+        }
+
+        function instrument() {
+            const doc = iframe.contentDocument;
+            if (!doc) return;
+
+            if (doc.defaultView) {
+                doc.defaultView.addEventListener('scroll', () => { if (state.selected) updateToolbar(state.selected); });
+                doc.defaultView.addEventListener('resize', () => { if (state.selected) updateToolbar(state.selected); });
+            }
+
+            doc.addEventListener('mouseover', (e) => {
+                if (state.mode !== 'edit' || !e.target || e.target.nodeType !== 1 || e.target.isContentEditable) return;
+                if (e.target.closest('#__vc_toolbar')) return;
+                if (e.target === doc.body || e.target === doc.documentElement) return;
+                if (!e.target.classList.contains('__vc-root') && !e.target.classList.contains('__vc-sel')) {
+                    e.target.classList.add('__vc-hover');
+                }
+            }, true);
+
+            doc.addEventListener('mouseout', (e) => {
+                if (state.mode === 'edit' && e.target && e.target.nodeType === 1) {
+                    e.target.classList.remove('__vc-hover');
+                }
+            }, true);
+
+            doc.addEventListener('click', (e) => {
+                if (state.mode !== 'edit' || !e.target || e.target.nodeType !== 1) return;
+                if (e.target.closest('#__vc_toolbar')) return;
+                if (e.target.isContentEditable) return;
+                if (e.target === doc.body || e.target === doc.documentElement) return;
+                e.preventDefault();
+                e.stopPropagation();
+                doc.querySelectorAll('.__vc-hover').forEach(n => n.classList.remove('__vc-hover'));
+                handleCanvasClick(e.target);
+            }, true);
+
+            doc.addEventListener('dblclick', (e) => {
+                if (state.mode !== 'edit' || !e.target || e.target.nodeType !== 1) return;
+                if (e.target.closest('#__vc_toolbar')) return;
+                if (e.target === doc.body || e.target === doc.documentElement) return;
+                if (VOID_TAGS.has(e.target.tagName)) return;
+                if (Array.from(e.target.children).some(child => child.nodeType === 1)) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const el = e.target;
+                el.classList.remove('__vc-hover');
+                el.contentEditable = 'true';
+                el.focus();
+
+                const win = iframe.contentWindow;
+                if (win) {
+                    const sel = win.getSelection();
+                    const range = doc.createRange();
+                    range.selectNodeContents(el);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                }
+                const handleBlur = () => {
+                    el.contentEditable = 'false';
+                    el.removeAttribute('contenteditable');
+                    el.removeEventListener('blur', handleBlur);
+                    syncStateFromIframe();
+                    history.push('Modifica testo inline');
+                    refreshAll();
+                };
+                el.addEventListener('blur', handleBlur);
+            }, true);
+
+            doc.addEventListener('contextmenu', (e) => {
+                if (state.mode !== 'edit' || !e.target || e.target.nodeType !== 1) return;
+                if (e.target.closest('#__vc_toolbar')) return;
+                if (e.target === doc.body || e.target === doc.documentElement) return;
+                e.preventDefault();
+                e.stopPropagation();
+                selectNode(e.target);
+                showContextMenu(e.clientX, e.clientY, e.target);
+            });
+        }
+
+        function handleCanvasClick(node) {
+            const root = getActiveRoot();
+            if (!root) { setRoot(node); return; }
+            if (node === root.node) { selectNode(null); return; }
+            if (isDescendant(node, root.node)) { selectNode(node); return; }
+            setRoot(node);
+        }
+
+        function rootSelectorFor(node) {
+            const doc = iframe.contentDocument;
+            if (node.id && !node.id.startsWith('__vc')) {
+                const sel = '#' + cssEscape(node.id);
+                if (isUniqueIn(sel, doc.body, node)) return sel;
+            }
+            ensureVcId(node);
+            return `[data-vc-id="${node.dataset.vcId}"]`;
+        }
+
+        function setRoot(node) {
+            const doc = iframe.contentDocument;
+            doc.querySelectorAll('.__vc-root, .__vc-sel').forEach(n => n.classList.remove('__vc-root', '__vc-sel'));
+            node.classList.add('__vc-root');
+
+            syncStateFromIframe();
+            const sel = rootSelectorFor(node);
+
+            if (!state.roots.has(sel)) {
+                state.roots.set(sel, { node, api: null, mappings: new Map(), filters: [] });
+            } else {
+                state.roots.get(sel).node = node;
+            }
+
+            state.activeRootSelector = sel;
+            selectNode(node);
+            history.push('Imposta radice');
+            refreshAll();
+            hint(`Radice selezionata: <${node.tagName.toLowerCase()}>`);
+        }
+
+        function selectNode(node) {
+            const doc = iframe.contentDocument;
+            doc.querySelectorAll('.__vc-sel').forEach(n => n.classList.remove('__vc-sel'));
+            if (!node) {
+                state.selected = null;
+                updateToolbar(null);
+                renderProps();
+                renderBreadcrumb();
+                highlightTreeRow(null);
+                return;
+            }
+            node.classList.add('__vc-sel');
+            state.selected = node;
+            updateToolbar(node);
+
+            const root = getActiveRoot();
+            if (!root) return;
+
+            ensureVcId(node);
+            syncStateFromIframe();
+
+            const rel = relSelector(node);
+            if (!root.mappings.has(rel)) root.mappings.set(rel, { props: [] });
+            const m = root.mappings.get(rel);
+            if (m.props.length === 0) {
+                defaultPropsFor(node).forEach(p => m.props.push({ property: p, expression: '' }));
+            }
+            renderProps();
+            renderBreadcrumb();
+            highlightTreeRow(rel);
+        }
+
+        function refreshAll() {
+            buildTree();
+            renderApiBar();
+            renderFieldsBar();
+            renderBreadcrumb();
+            renderProps();
+            renderRouteBar();
+            updateRootsIndicator();
+            updateMappingBadge();
+
+            if (!state._hintShown && state.roots.size > 0) {
+                state._hintShown = true;
+                setTimeout(() => hint('Doppio click su un nodo dell\'albero per spostare la radice viola.', 4000), 600);
+            }
+        }
+
+        function updateRootsIndicator() {
+            const n = state.roots.size;
+            rootsIndicator.classList.toggle('hidden', n === 0);
+            rootsCount.textContent = n;
+        }
+
+        function updateMappingBadge() {
+            const root = getActiveRoot();
+            if (!root) { mappingBadge.classList.add('hidden'); return; }
+            let count = 0;
+            for (const [, m] of root.mappings) {
+                count += m.props.filter(p => (p.expression || '').trim()).length;
+            }
+            if (count > 0) {
+                mappingBadge.textContent = count;
+                mappingBadge.classList.remove('hidden');
+            } else {
+                mappingBadge.classList.add('hidden');
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // BREADCRUMB
+        // ---------------------------------------------------------------
+        function renderBreadcrumb() {
+            breadcrumbHost.innerHTML = '';
+            if (!state.selected) {
+                breadcrumbHost.classList.add('hidden');
+                return;
+            }
+            const root = getActiveRoot();
+            if (!root) { breadcrumbHost.classList.add('hidden'); return; }
+
+            breadcrumbHost.classList.remove('hidden');
+            const chain = [];
+            let cur = state.selected;
+            while (cur && cur !== root.node.parentElement) {
+                chain.unshift(cur);
+                if (cur === root.node) break;
+                cur = cur.parentElement;
+            }
+
+            chain.forEach((node, i) => {
+                if (i > 0) breadcrumbHost.appendChild(h('span', { className: 'text-gray-300' }, '›'));
+                const isLast = i === chain.length - 1;
+                const label = node === root.node
+                    ? '★ ' + node.tagName.toLowerCase()
+                    : node.tagName.toLowerCase() + (node.id ? '#' + node.id : '');
+                breadcrumbHost.appendChild(h('button', {
+                    type: 'button',
+                    className: 'breadcrumb-item px-1.5 py-0.5 rounded ' +
+                        (isLast ? 'text-orange-600 font-semibold' : 'text-gray-500'),
+                    onclick: () => {
+                        selectNode(node);
+                        try { node.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+                    }
+                }, label));
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // ROUTE BAR
+        // ---------------------------------------------------------------
+        function renderRouteBar() {
+            routeFileEl.textContent = state.file || 'example.html';
+            if (document.activeElement !== routePatternInp) {
+                routePatternInp.value = state.routePattern || '';
+            }
+            routePatternInp.disabled = state.mode === 'preview';
+
+            document.querySelectorAll('#route-mode-toggle [data-hashmode]').forEach(b => {
+                const isActive = (b.dataset.hashmode === '1') === state.routeHashMode;
+                b.className = 'px-2 py-0.5 text-[10px] font-mono font-semibold rounded transition-colors ' +
+                    (isActive ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-gray-500 hover:text-gray-700');
+            });
+
+            const pattern = state.routePattern || '';
+            const preview = $('route-preview');
+            let fullPattern;
+            if (state.routeHashMode) {
+                fullPattern = (state.file || 'example.html') + '#' + (pattern || '/');
+            } else {
+                fullPattern = pattern || '/';
+            }
+            preview.textContent = '→ ' + fullPattern;
+            preview.title = 'URL finale: ' + fullPattern;
+
+            const params = extractParams(pattern);
+            const validSet = new Set(params);
+            Object.keys(state.previewParamValues).forEach(k => {
+                if (!validSet.has(k)) delete state.previewParamValues[k];
+            });
+
+            if (state.mode === 'preview' && pattern) {
+                if (params.length > 0) {
+                    routeParamsStrip.className = 'flex items-center gap-1.5 flex-shrink-0 pl-2 border-l border-gray-200';
+                    routeParamsStrip.innerHTML = '';
+                    params.forEach(p => {
+                        const inp = h('input', {
+                            type: 'text',
+                            value: state.previewParamValues[p] || '',
+                            placeholder: '1',
+                            oninput: (e) => { state.previewParamValues[p] = e.target.value; },
+                            onblur: () => runBind()
+                        });
+                        routeParamsStrip.appendChild(h('div', { className: 'route-chip' }, ':' + p, inp));
+                    });
+                } else {
+                    routeParamsStrip.className = 'hidden';
+                }
+            } else {
+                routeParamsStrip.className = 'hidden';
+            }
+        }
+
+        routePatternInp.addEventListener('input', () => {
+            state.routePattern = normalizePattern(routePatternInp.value);
+            renderRouteBar();
+            if ($('dlg-api').open) renderApiRouteParams();
+            history.push('Modifica route', 800);
+        });
+
+        document.querySelectorAll('#route-mode-toggle [data-hashmode]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.routeHashMode = btn.dataset.hashmode === '1';
+                renderRouteBar();
+                if ($('dlg-api').open) renderApiRouteParams();
+                history.push('Cambio modalità route');
+                hint(state.routeHashMode
+                    ? 'Modalità Hash: route MPA (user.html#/…)'
+                    : 'Modalità Path: richiede rewrite lato server');
+            });
+        });
+
+        function replaceParamInPattern(oldParam, newParam) {
+            if (!oldParam || !newParam || oldParam === newParam) return false;
+            const pattern = state.routePattern || '';
+            const re = new RegExp(':' + oldParam + '(?![a-zA-Z0-9_])');
+            if (!re.test(pattern)) return false;
+            state.routePattern = pattern.replace(re, ':' + newParam);
+            routePatternInp.value = state.routePattern;
+            renderRouteBar();
+            return true;
+        }
+
+        function addParamToPattern(param) {
+            if (!param) return false;
+            const pattern = state.routePattern || '';
+            if (extractParams(pattern).includes(param)) return false;
+            const clean = pattern.replace(/\/$/, '');
+            state.routePattern = (clean ? clean : '') + '/:' + param;
+            routePatternInp.value = state.routePattern;
+            renderRouteBar();
+            return true;
+        }
+
+        function removeParamFromPattern(param) {
+            if (!param) return false;
+            const pattern = state.routePattern || '';
+            if (!pattern || !extractParams(pattern).includes(param)) return false;
+            const re = new RegExp('/?:' + param + '(?![a-zA-Z0-9_])', 'g');
+            let next = pattern.replace(re, '').replace(/\/+/g, '/').replace(/\/$/, '');
+            state.routePattern = next || '';
+            routePatternInp.value = state.routePattern;
+            renderRouteBar();
+            return true;
+        }
+
+        function isParamUsedByOthers(param, excludeFilter) {
+            for (const [, entry] of state.roots) {
+                for (const f of entry.filters) {
+                    if (f === excludeFilter) continue;
+                    if (f.type === 'where' && paramFromValue(f.value) === param) return true;
+                }
+                if (entry.api?.url && extractParams(entry.api.url).includes(param)) return true;
+            }
+            return false;
+        }
+
+        // ---------------------------------------------------------------
+        // CONTEXT MENU
+        // ---------------------------------------------------------------
+        function showContextMenu(x, y, node) {
+            ctxMenu.innerHTML = '';
+            ctxMenu.classList.add('open');
+
+            const root = getActiveRoot();
+            const isRootNode = root && node === root.node;
+            const parent = node.parentElement;
+            const siblings = parent ? Array.from(parent.children) : [];
+            const idx = siblings.indexOf(node);
+
+            const add = (icon, label, kbd, fn, disabled = false) => {
+                const btn = h('button', {
+                    type: 'button',
+                    disabled: disabled ? '' : null,
+                    onclick: () => { closeContextMenu(); fn(); }
+                });
+                if (icon) btn.innerHTML = icon;
+                btn.appendChild(document.createTextNode(label));
+                if (kbd) btn.appendChild(h('span', { className: 'kbd' }, kbd));
+                ctxMenu.appendChild(btn);
+                return btn;
+            };
+            const sep = () => ctxMenu.appendChild(h('div', { className: 'sep' }));
+
+            const ICON = {
+                dup: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+                del: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+                up: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>',
+                dn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>',
+                wrap: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>',
+                unwrap: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m0 8v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3m0-8V5a2 2 0 0 0-2-2h-3"/></svg>',
+                root: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+                copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+            };
+
+            add(ICON.dup, 'Duplica', 'Ctrl+D', () => duplicateNode(node));
+            add(ICON.del, 'Elimina', 'Canc', () => deleteNode(node), isRootNode);
+            sep();
+            add(ICON.up, 'Sposta su', 'Alt+↑', () => moveNode(node, -1), !parent || idx <= 0);
+            add(ICON.dn, 'Sposta giù', 'Alt+↓', () => moveNode(node, +1), !parent || idx >= siblings.length - 1);
+            sep();
+            add(ICON.wrap, 'Wrappa in <div>', '', () => wrapNode(node));
+            add(ICON.unwrap, 'Estrai contenuto', '', () => unwrapNode(node), isRootNode);
+            sep();
+            add(ICON.root, 'Imposta come radice', '', () => setRoot(node), isRootNode);
+            add(ICON.copy, 'Copia selettore', '', () => {
+                const rel = relSelector(node);
+                if (navigator.clipboard) navigator.clipboard.writeText(rel).then(() => toast('Selettore copiato')).catch(() => {});
+                else toast(rel);
+            });
+            add(ICON.copy, 'Copia HTML', '', () => {
+                if (navigator.clipboard) navigator.clipboard.writeText(node.outerHTML).then(() => toast('HTML copiato')).catch(() => {});
+                else toast('Copia non disponibile');
+            });
+
+            const rect = ctxMenu.getBoundingClientRect();
+            const vw = window.innerWidth, vh = window.innerHeight;
+            if (x + rect.width > vw) x = vw - rect.width - 8;
+            if (y + rect.height > vh) y = vh - rect.height - 8;
+            ctxMenu.style.left = x + 'px';
+            ctxMenu.style.top = y + 'px';
+        }
+
+        function closeContextMenu() {
+            ctxMenu.classList.remove('open');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!ctxMenu.contains(e.target)) closeContextMenu();
+        });
+        document.addEventListener('contextmenu', (e) => {
+            if (ctxMenu.contains(e.target)) e.preventDefault();
+        });
+        window.addEventListener('blur', closeContextMenu);
+
+        treeHost.addEventListener('contextmenu', (e) => {
+            const row = e.target.closest('[data-rel]');
+            if (!row) return;
+            e.preventDefault();
+            const root = getActiveRoot();
+            if (!root) return;
+            let node = null;
+            if (row.dataset.rel === state.activeRootSelector) node = root.node;
+            else node = root.node.querySelector(row.dataset.rel);
+            if (!node) return;
+            selectNode(node);
+            showContextMenu(e.clientX, e.clientY, node);
+        });
+
+        // ---------------------------------------------------------------
+        // AZIONI NODO
+        // ---------------------------------------------------------------
+        function removeVcClasses(el) {
+            el.classList.remove('__vc-root', '__vc-sel', '__vc-hover');
+            el.querySelectorAll('.__vc-root, .__vc-sel, .__vc-hover').forEach(n => {
+                n.classList.remove('__vc-root', '__vc-sel', '__vc-hover');
+            });
+        }
+
+        function duplicateNode(node) {
+            if (!node || !node.parentElement) return;
+            if (state.mode !== 'edit') { toast('Disponibile solo in modalità Modifica.', true); return; }
+            const tag = node.tagName.toLowerCase();
+            const clone = node.cloneNode(true);
+            removeVcClasses(clone);
+            if (clone.dataset && clone.dataset.vcId) delete clone.dataset.vcId;
+            clone.querySelectorAll('[data-vc-id]').forEach(n => delete n.dataset.vcId);
+            node.parentElement.insertBefore(clone, node.nextSibling);
+            afterTreeMutation();
+            history.push('Duplica nodo');
+            hint(`Duplicato <${tag}>`);
+        }
+
+        function deleteNode(node) {
+            if (!node || !node.parentElement) return;
+            if (state.mode !== 'edit') { toast('Disponibile solo in modalità Modifica.', true); return; }
+            const doc = iframe.contentDocument;
+            if (node === doc.body || node === doc.documentElement) {
+                toast('Impossibile eliminare questo elemento.', true);
+                return;
+            }
+            const tag = node.tagName.toLowerCase();
+            node.parentElement.removeChild(node);
+            afterTreeMutation();
+            history.push('Elimina nodo');
+            hint(`Eliminato <${tag}>`);
+        }
+
+        function moveNode(node, delta) {
+            if (!node || !node.parentElement) return;
+            if (state.mode !== 'edit') { toast('Disponibile solo in modalità Modifica.', true); return; }
+            const parent = node.parentElement;
+            const siblings = Array.from(parent.children);
+            const idx = siblings.indexOf(node);
+            const newIdx = idx + delta;
+            if (newIdx < 0 || newIdx >= siblings.length) return;
+
+            const ref = delta < 0
+                ? siblings[newIdx]
+                : siblings[newIdx].nextSibling;
+            parent.insertBefore(node, ref);
+
+            afterTreeMutation();
+            history.push('Sposta nodo');
+            hint('Nodo spostato');
+        }
+
+        function wrapNode(node) {
+            if (!node || !node.parentElement) return;
+            if (state.mode !== 'edit') { toast('Disponibile solo in modalità Modifica.', true); return; }
+            const wrapper = node.ownerDocument.createElement('div');
+            node.parentElement.insertBefore(wrapper, node);
+            wrapper.appendChild(node);
+            afterTreeMutation();
+            history.push('Wrappa nodo');
+            hint('Nodo wrappato in <div>');
+        }
+
+        function unwrapNode(node) {
+            if (!node || !node.parentElement) return;
+            if (state.mode !== 'edit') { toast('Disponibile solo in modalità Modifica.', true); return; }
+            const parent = node.parentElement;
+            while (node.firstChild) parent.insertBefore(node.firstChild, node);
+            parent.removeChild(node);
+            afterTreeMutation();
+            history.push('Estrai contenuto');
+            hint('Contenuto estratto');
+        }
+
+        function afterTreeMutation() {
+            state.selected = null;
+            const doc = iframe.contentDocument;
+            if (doc) {
+                doc.querySelectorAll('.__vc-sel, .__vc-hover').forEach(n => n.classList.remove('__vc-sel', '__vc-hover'));
+                updateToolbar(null);
+            }
+            syncStateFromIframe();
+            reattachRootNodes();
+            refreshAll();
+        }
+
+        // ---------------------------------------------------------------
+        // ALBERO DOM
+        // ---------------------------------------------------------------
+        function buildTree() {
+            treeHost.innerHTML = '';
+            const root = getActiveRoot();
+            if (!root || !root.node) {
+                treeHost.appendChild(h('div', { className: 'px-4 py-8 text-center' },
+                    h('div', { className: 'text-xs text-gray-400 italic leading-relaxed', html: 'Clicca un elemento nel canvas<br>per usarlo come radice.' })
+                ));
+                treeCount.textContent = '—';
+                activeRootLabel.textContent = '';
+                return;
+            }
+
+            let count = 0;
+            const ul = h('ul', { className: 'list-none m-0 p-0' });
+            ul.appendChild(buildTreeItem(root.node, true, () => count++));
+            treeHost.appendChild(h('div', {}, ul));
+
+            treeCount.textContent = count + ' nodi';
+            activeRootLabel.textContent = state.activeRootSelector;
+            if (state.selected) highlightTreeRow(relSelector(state.selected));
+        }
+
+        function chevronSVG(collapsed) {
+            const points = collapsed ? '9 18 15 12 9 6' : '6 9 12 15 18 9';
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="' + points + '"/></svg>';
+        }
+
+        function buildTreeItem(node, isRoot, counter) {
+            counter();
+            const root = getActiveRoot();
+            const rel = isRoot ? state.activeRootSelector : buildSelector(node, root.node);
+            const m = root.mappings.get(rel);
+            const hasMapping = m && m.props.some(p => (p.expression || '').trim());
+            const isSel = node === state.selected;
+            const childEls = Array.from(node.children).filter(c => !SKIP.has(c.tagName));
+            const hasChildren = childEls.length > 0;
+            const isCollapsed = state.treeCollapsed.has(rel);
+
+            const rowClasses = [
+                'flex items-center gap-1.5 px-2 py-1.5 mx-1 rounded-md cursor-pointer text-xs select-none transition-colors group',
+                isRoot && isSel ? 'bg-purple-100 text-purple-800 font-medium' :
+                    isRoot ? 'bg-purple-50 text-purple-700 font-medium hover:bg-purple-100' :
+                        isSel ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'text-gray-700 hover:bg-gray-50'
+            ].join(' ');
+
+            const row = h('div', {
+                className: rowClasses,
+                dataset: { rel },
+                title: isRoot ? 'Radice (viola) — doppio click su un altro nodo per spostarla'
+                    : 'Click: seleziona · Doppio click: imposta come radice',
+                onclick: (e) => {
+                    e.stopPropagation();
+                    selectNode(node);
+                    try { node.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+                },
+                ondblclick: (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setRoot(node);
+                }
+            });
+
+            if (hasChildren) {
+                row.appendChild(h('button', {
+                    type: 'button',
+                    className: 'w-3.5 h-3.5 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-gray-700 transition-colors',
+                    title: isCollapsed ? 'Espandi' : 'Comprimi',
+                    html: chevronSVG(isCollapsed),
+                    onclick: (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (isCollapsed) state.treeCollapsed.delete(rel);
+                        else state.treeCollapsed.add(rel);
+                        buildTree();
+                    }
+                }));
+            } else {
+                row.appendChild(h('span', { className: 'w-3.5 flex-shrink-0' }));
+            }
+
+            row.appendChild(h('span', {
+                className: 'font-mono text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ' +
+                    (isRoot ? 'bg-purple-100 text-purple-600' :
+                        isSel  ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500')
+            }, node.tagName.toLowerCase()));
+
+            const cls = Array.from(node.classList).filter(c => !c.startsWith('__vc')).slice(0, 2).map(c => '.' + c).join('');
+            if (cls) {
+                row.appendChild(h('span', {
+                    className: 'font-mono text-[11px] truncate flex-1 min-w-0 ' +
+                        (isRoot ? 'text-purple-500' : isSel ? 'text-orange-500' : 'text-gray-400'),
+                    dataset: { label: '1' }
+                }, cls));
+            } else {
+                row.appendChild(h('span', { className: 'flex-1', dataset: { label: '1' } }));
+            }
+
+            if (hasMapping) {
+                row.appendChild(h('span', { className: 'w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0', dataset: { dot: '1' } }));
+            }
+            if (hasChildren && isCollapsed) {
+                row.appendChild(h('span', { className: 'text-[9px] text-gray-400 font-mono flex-shrink-0' }, '+' + childEls.length));
+            }
+
+            const dupBtn = h('button', {
+                type: 'button',
+                title: 'Duplica elemento',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors',
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75"/></svg>',
+                onclick: (e) => { e.stopPropagation(); e.preventDefault(); duplicateNode(node); }
+            });
+            const delBtn = h('button', {
+                type: 'button',
+                title: 'Elimina elemento',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors',
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"/></svg>',
+                onclick: (e) => { e.stopPropagation(); e.preventDefault(); deleteNode(node); }
+            });
+            const actions = h('div', {
+                className: 'flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0',
+                dataset: { actions: '1' }
+            }, dupBtn, delBtn);
+            row.appendChild(actions);
+
+            const li = h('li', {}, row);
+            if (hasChildren && !isCollapsed) {
+                const childUl = h('ul', { className: 'list-none m-0 pl-3 ml-3 border-l border-dashed border-gray-200' });
+                childEls.forEach(c => childUl.appendChild(buildTreeItem(c, false, counter)));
+                li.appendChild(childUl);
+            }
+            return li;
+        }
+
+        $('tree-expand-all').addEventListener('click', () => {
+            state.treeCollapsed.clear();
+            buildTree();
+        });
+
+        function highlightTreeRow(rel) {
+            treeHost.querySelectorAll('[data-rel]').forEach(r => {
+                const isSel = rel !== null && r.dataset.rel === rel;
+                const isRoot = state.activeRootSelector && r.dataset.rel === state.activeRootSelector;
+
+                r.className = [
+                    'flex items-center gap-1.5 px-2 py-1.5 mx-1 rounded-md cursor-pointer text-xs select-none transition-colors group',
+                    isRoot && isSel ? 'bg-purple-100 text-purple-800 font-medium' :
+                        isRoot ? 'bg-purple-50 text-purple-700 font-medium hover:bg-purple-100' :
+                            isSel ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'text-gray-700 hover:bg-gray-50'
+                ].join(' ');
+
+                const tag = r.querySelector('span.font-mono');
+                if (tag) {
+                    tag.className = 'font-mono text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ' +
+                        (isRoot ? 'bg-purple-100 text-purple-600' : isSel ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500');
+                }
+                const lbl = r.querySelector('[data-label]');
+                if (lbl && lbl.textContent) {
+                    lbl.className = 'font-mono text-[11px] truncate flex-1 min-w-0 ' +
+                        (isRoot ? 'text-purple-500' : isSel ? 'text-orange-500' : 'text-gray-400');
+                }
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // PROPRIETÀ / MAPPATURA
+        // ---------------------------------------------------------------
+        function renderProps() {
+            propsHost.innerHTML = '';
+            const root = getActiveRoot();
+
+            if (!root || !state.selected) {
+                propsHost.appendChild(h('div', { className: 'px-4 py-8 text-center' },
+                    h('div', { className: 'text-xs text-gray-400 italic leading-relaxed', html: !root ? 'Seleziona una radice nel canvas.' : 'Seleziona un nodo<br>della struttura.' })
+                ));
+                return;
+            }
+
+            const rel = relSelector(state.selected);
+            const m = root.mappings.get(rel);
+            if (!m) return;
+
+            const wrap = h('div', { className: 'p-4' });
+            const head = h('div', { className: 'flex items-center gap-2 pb-3 mb-3 border-b border-gray-100' },
+                h('span', { className: 'font-mono text-[11px] font-semibold px-2 py-0.5 rounded bg-indigo-600 text-white flex-shrink-0' }, state.selected.tagName.toLowerCase()),
+                h('span', { className: 'font-mono text-[10.5px] text-gray-400 truncate flex-1', title: rel }, rel),
+                h('button', {
+                    type: 'button',
+                    title: 'Pulisci tutte le mappature',
+                    className: 'text-[10px] text-gray-400 hover:text-red-500 px-1.5 py-0.5 rounded hover:bg-red-50',
+                    onclick: () => {
+                        m.props.forEach(p => p.expression = '');
+                        renderProps();
+                        updateTreeDot(rel);
+                        updateMappingBadge();
+                        history.push('Pulisci mappatura');
+                    }
+                }, 'Pulisci')
+            );
+            wrap.appendChild(head);
+
+            if (m.props.length === 0) {
+                wrap.appendChild(h('div', {
+                    className: 'text-[11px] text-gray-400 italic leading-relaxed mb-3 px-1'
+                }, Array.from(state.selected.children).some(c => c.nodeType === 1)
+                    ? 'Questo elemento contiene altri elementi. Aggiungi una proprietà per mappare attributi (class, style, …) senza toccare i figli.'
+                    : 'Nessuna proprietà configurata. Clicca "+" per aggiungerne una.'));
+            }
+
+            m.props.forEach((p, i) => wrap.appendChild(buildPropRow(p, i, rel, m)));
+
+            const addBtn = h('button', {
+                type: 'button',
+                className: 'inline-flex items-center gap-1.5 px-2.5 py-1.5 mt-1 text-[11px] font-medium text-gray-500 border border-dashed border-gray-300 rounded-md hover:text-indigo-600 hover:border-indigo-400 transition-colors',
+                onclick: (e) => openAddPropertyMenu(e.currentTarget, m, rel),
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg> Aggiungi proprietà'
+            });
+            wrap.appendChild(addBtn);
+            propsHost.appendChild(wrap);
+        }
+
+        function openAddPropertyMenu(anchorEl, mapping, rel) {
+            document.querySelectorAll('.prop-menu').forEach(m => m.remove());
+            const node = state.selected;
+            if (!node) return;
+
+            const tag = node.tagName;
+            const suggestions = PROP_SUGGESTIONS_BY_TAG[tag] || PROP_SUGGESTIONS_BY_TAG.DEFAULT;
+            const hasElementChildren = Array.from(node.children).some(c => c.nodeType === 1);
+
+            const list = hasElementChildren
+                ? suggestions.filter(p => p !== 'text' && p !== 'html')
+                : suggestions;
+
+            const existing = new Set(mapping.props.map(p => p.property));
+
+            const menu = h('div', { className: 'prop-menu' });
+
+            let count = 0;
+            list.forEach(prop => {
+                if (existing.has(prop)) return;
+                count++;
+                menu.appendChild(h('button', {
+                    type: 'button',
+                    onclick: () => {
+                        menu.remove();
+                        mapping.props.push({ property: prop, expression: '' });
+                        renderProps();
+                        updateTreeDot(rel);
+                        updateMappingBadge();
+                        history.push('Aggiungi proprietà');
+                    }
+                }, prop));
+            });
+
+            if (count === 0) {
+                menu.appendChild(h('div', {
+                    className: 'px-3 py-2 text-[10.5px] text-gray-400 italic'
+                }, 'Tutte le proprietà suggerite sono già presenti.'));
+            }
+
+            menu.appendChild(h('div', { className: 'divider' }));
+            menu.appendChild(h('button', {
+                type: 'button',
+                style: 'font-style:italic;color:#6b7280;font-family:inherit',
+                onclick: () => {
+                    menu.remove();
+                    mapping.props.push({ property: '', expression: '' });
+                    renderProps();
+                }
+            }, 'Personalizzata…'));
+
+            const rect = anchorEl.getBoundingClientRect();
+            menu.style.top = (rect.bottom + 4) + 'px';
+            menu.style.left = rect.left + 'px';
+            document.body.appendChild(menu);
+
+            const mrect = menu.getBoundingClientRect();
+            const vw = window.innerWidth, vh = window.innerHeight;
+            if (mrect.right > vw - 8) menu.style.left = (vw - mrect.width - 8) + 'px';
+            if (mrect.bottom > vh - 8) menu.style.top = (rect.top - mrect.height - 4) + 'px';
+
+            setTimeout(() => {
+                const close = (e) => {
+                    if (!menu.contains(e.target)) {
+                        menu.remove();
+                        document.removeEventListener('mousedown', close, true);
+                    }
+                };
+                document.addEventListener('mousedown', close, true);
+            }, 0);
+        }
+
+        function buildPropRow(p, index, rel, mapping) {
+            const nameInput = h('input', {
+                type: 'text',
+                value: p.property,
+                placeholder: 'proprietà',
+                dataset: { vcName: '1' },
+                className: 'flex-1 min-w-0 px-2 py-1 text-[11px] font-mono bg-white border border-gray-200 rounded-md outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all',
+                list: 'prop-suggestions',
+                oninput: (e) => { p.property = e.target.value.trim(); }
+            });
+
+            const rmBtn = h('button', {
+                type: 'button',
+                className: 'w-6 h-6 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0',
+                title: 'Rimuovi',
+                onclick: () => {
+                    mapping.props.splice(index, 1);
+                    renderProps();
+                    updateTreeDot(rel);
+                    updateMappingBadge();
+                    history.push('Rimuovi proprietà');
+                },
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+            });
+
+            const badge = h('span', { className: 'absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-mono px-1.5 py-0.5 rounded pointer-events-none' });
+            const preview = h('div', { className: 'mt-1 px-2 text-[10.5px] text-gray-400 font-mono truncate' });
+
+            const exprInput = h('input', {
+                type: 'text',
+                value: p.expression || '',
+                placeholder: 'campo  ·  {{campo}}  ·  params.id',
+                dataset: { vcExpr: '1' },
+                className: 'w-full px-2 py-1.5 pr-14 text-[11px] font-mono bg-white border border-gray-200 rounded-md outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all',
+                onfocus: (e) => { lastFocusedExprInput = e.target; },
+                oninput: (e) => {
+                    p.expression = e.target.value;
+                    updateModeBadge();
+                    updatePreview();
+                    updateTreeDot(rel);
+                    updateMappingBadge();
+                    history.push('Modifica proprietà', 800);
+                }
+            });
+
+            function updateModeBadge() {
+                const mode = detectExprMode(exprInput.value);
+                badge.className = 'absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] font-mono px-1.5 py-0.5 rounded pointer-events-none ' +
+                    (mode === 'path' || mode === 'path-item' ? 'bg-blue-50 text-blue-500' :
+                        mode === 'template' ? 'bg-amber-50 text-amber-600' :
+                            mode === 'param'    ? 'bg-indigo-50 text-indigo-600' :
+                                mode === 'index'    ? 'bg-pink-50 text-pink-600' :
+                                    mode === 'expr'     ? 'bg-purple-50 text-purple-600' : '');
+                const label = mode === 'path-item' ? 'path' : mode;
+                badge.textContent = mode !== 'empty' ? label : '';
+            }
+
+            function updatePreview() {
+                const v = exprInput.value.trim();
+                if (!v) { preview.textContent = ''; return; }
+                const sampleItem = getActiveRoot()?.api?.sampleItem;
+                const result = evaluateExpr(v, sampleItem);
+                preview.innerHTML = `→ <span class="text-gray-600">${escapeHtml(String(result)).slice(0, 90)}</span>`;
+            }
+
+            updateModeBadge();
+            updatePreview();
+
+            return h('div', { className: 'mb-3' },
+                h('div', { className: 'flex items-center gap-1.5 mb-1' }, nameInput, rmBtn),
+                h('div', { className: 'relative' }, exprInput, badge),
+                preview
+            );
+        }
+
+        function updateTreeDot(rel) {
+            const row = treeHost.querySelector(`[data-rel="${CSS.escape(rel)}"]`);
+            if (!row) return;
+            const root = getActiveRoot();
+            const m = root?.mappings.get(rel);
+            const has = m && m.props.some(p => (p.expression || '').trim());
+            const dot = row.querySelector('[data-dot]');
+            if (has && !dot) {
+                const d = h('span', { className: 'w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0', dataset: { dot: '1' } });
+                const actions = row.querySelector('[data-actions]');
+                if (actions) row.insertBefore(d, actions);
+                else row.appendChild(d);
+            } else if (!has && dot) {
+                dot.remove();
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // CAMPI
+        // ---------------------------------------------------------------
+        function renderFieldsBar() {
+            const fields = getActiveRoot()?.api?.fields || [];
+            if (!fields.length) { fieldsBar.classList.add('hidden'); return; }
+            fieldsBar.classList.remove('hidden');
+            fieldsCount.textContent = fields.length + ' campi';
+            fieldsChips.innerHTML = '';
+            fields.forEach(f => {
+                fieldsChips.appendChild(h('button', {
+                    type: 'button',
+                    className: 'text-[10px] font-mono px-1.5 py-0.5 bg-white border border-gray-200 text-gray-600 rounded hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors',
+                    title: `Inserisci {{${f}}} nel campo espressione`,
+                    onclick: (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        insertFieldIntoActiveInput(`{{${f}}}`);
+                    }
+                }, f));
+            });
+        }
+
+        // ---------------------------------------------------------------
+        // ROOT API BAR
+        // ---------------------------------------------------------------
+        function renderApiBar() {
+            const root = getActiveRoot();
+            rootApiBar.innerHTML = '';
+
+            if (!root) {
+                rootApiBar.appendChild(h('div', { className: 'text-[11px] text-gray-400 italic' }, 'Nessuna radice attiva.'));
+                return;
+            }
+
+            if (!root.api) {
+                rootApiBar.appendChild(
+                    h('div', { className: 'flex items-center gap-2' },
+                        h('span', { className: 'flex-1 min-w-0 text-[11px] text-gray-500' }, 'Nessuna API impostata'),
+                        h('button', {
+                            type: 'button',
+                            className: 'text-[11px] font-medium px-2.5 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm',
+                            onclick: openApiDialog
+                        }, 'Imposta API')
+                    )
+                );
+            } else {
+                const { url, fields } = root.api;
+                const nFilters = root.filters?.length || 0;
+                const nActive = root.filters?.filter(f => f.enabled !== false).length || 0;
+                rootApiBar.appendChild(
+                    h('div', { className: 'flex items-center gap-2' },
+                        h('div', { className: 'flex-1 min-w-0' },
+                            h('div', { className: 'text-[11px] text-emerald-600 font-medium leading-tight' },
+                                `${fields.length} campi${nActive ? ` · ${nActive}/${nFilters} filtri` : ''}`),
+                            h('div', { className: 'text-[10px] text-gray-400 font-mono truncate leading-tight', title: url }, url)
+                        ),
+                        h('button', {
+                            type: 'button',
+                            className: 'text-[11px] font-medium px-2 py-1 text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 bg-white',
+                            onclick: openApiDialog
+                        }, 'Modifica')
+                    )
+                );
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // API DIALOG
+        // ---------------------------------------------------------------
+        function openApiDialog() {
+            const root = getActiveRoot();
+            if (!root) { toast('Seleziona prima una radice nel canvas.', true); return; }
+            $('api-input').value = root.api ? root.api.url : '';
+            $('api-dialog-status').innerHTML = '';
+            $('api-sample').hidden = true;
+            $('api-tree').hidden = true;
+            $('api-view-tabs').hidden = true;
+            $('api-view-tabs').innerHTML = '';
+            $('dlg-api-root').textContent = state.activeRootSelector;
+            renderApiUrlPreview();
+            renderApiRouteParams();
+            renderFilters();
+            if (root.api?.sampleItem) renderApiTreeFromCache();
+            $('dlg-api').showModal();
+            setTimeout(() => $('api-input').focus(), 50);
+        }
+
+        function renderApiUrlPreview() {
+            const input = $('api-input');
+            const url = input.value.trim();
+            const host = $('api-url-preview');
+            if (!url) { host.textContent = ''; return; }
+            const params = extractParams(url);
+            let preview = url;
+            params.forEach(p => {
+                preview = preview.replace(new RegExp(':' + p + '(?![a-zA-Z0-9_])', 'g'), '1');
+            });
+            host.innerHTML = '→ <span class="text-gray-500">' + escapeHtml(preview) + '</span>';
+        }
+
+        $('api-input').addEventListener('input', renderApiUrlPreview);
+
+        function renderApiRouteParams() {
+            const host = $('api-route-params');
+            host.innerHTML = '';
+            const routeParams = extractParams(state.routePattern || '');
+
+            if (!routeParams.length) {
+                host.innerHTML = '<div class="text-[10.5px] text-gray-400 italic">' +
+                    'Nessun <span class="font-mono text-indigo-500">:param</span> nella route. Aggiungine uno nella barra sopra per usarlo qui.' +
+                    '</div>';
+                return;
+            }
+            host.appendChild(h('div',
+                { className: 'text-[10px] text-gray-500 mb-1.5 font-semibold uppercase tracking-wider' },
+                'Parametri route disponibili'
+            ));
+
+            const wrap = h('div', { className: 'flex flex-wrap gap-1' });
+            routeParams.forEach(p => {
+                wrap.appendChild(h('button', {
+                    type: 'button',
+                    className: 'text-[10px] font-mono px-2 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded hover:bg-indigo-100 transition-colors',
+                    title: 'Inserisci :' + p + ' nel campo attivo',
+                    onclick: () => insertRouteParam(':' + p)
+                }, ':' + p));
+            });
+            host.appendChild(wrap);
+            host.appendChild(h('div',
+                { className: 'text-[10px] text-gray-400 mt-1.5 leading-relaxed' },
+                'Clicca un chip per inserirlo nel campo attivo.'
+            ));
+        }
+
+        function insertRouteParam(text) {
+            const apiDialog = $('dlg-api');
+            let target = null;
+            const active = document.activeElement;
+            if (active && active.tagName === 'INPUT' && apiDialog.contains(active)) {
+                target = active;
+            } else if (apiDialog.open) {
+                target = $('api-input');
+            } else {
+                target = getActiveExprInput();
+            }
+            if (!target) return;
+
+            const start = target.selectionStart ?? target.value.length;
+            const end   = target.selectionEnd   ?? target.value.length;
+            target.value = target.value.slice(0, start) + text + target.value.slice(end);
+            const pos = start + text.length;
+            target.setSelectionRange(pos, pos);
+            target.focus();
+            target.dispatchEvent(new Event('input', { bubbles: true }));
+            toast('Inserito ' + text);
+        }
+
+        function flattenPaths(obj, prefix = '', out = [], depth = 0, maxDepth = 8) {
+            if (obj === null || obj === undefined || depth > maxDepth) return out;
+            if (Array.isArray(obj)) {
+                if (obj.length > 0) flattenPaths(obj[0], prefix ? prefix + '.0' : '0', out, depth + 1, maxDepth);
+                return out;
+            }
+            if (typeof obj !== 'object') return out;
+            for (const [k, v] of Object.entries(obj)) {
+                const path = prefix ? prefix + '.' + k : k;
+                out.push(path);
+                if (v !== null && typeof v === 'object') flattenPaths(v, path, out, depth + 1, maxDepth);
+            }
+            return out;
+        }
+
+        function formatValuePreview(v) {
+            if (v === null) return 'null';
+            if (typeof v === 'string') return JSON.stringify(v).slice(0, 30);
+            if (Array.isArray(v)) return '[' + v.length + ']';
+            if (typeof v === 'object') return '{' + Object.keys(v).length + '}';
+            return String(v);
+        }
+
+        function isBranchValue(v) {
+            if (v === null || typeof v !== 'object') return false;
+            if (Array.isArray(v)) return v.length > 0;
+            return Object.keys(v).length > 0;
+        }
+
+        function buildJsonTree(obj, parentPath = '', depth = 0) {
+            const ul = h('ul', { className: 'list-none m-0 p-0' });
+            if (depth > 0) ul.style.paddingLeft = '14px';
+
+            if (Array.isArray(obj)) {
+                if (obj.length === 0) {
+                    ul.appendChild(h('li', { className: 'text-[10px] text-gray-400 italic py-0.5' }, '[ ] vuoto'));
+                    return ul;
+                }
+                const li = h('li', { className: 'py-0.5 api-tree-row' });
+                li.appendChild(buildJsonNode('[0]', obj[0], parentPath ? parentPath + '.0' : '0'));
+                ul.appendChild(li);
+                return ul;
+            }
+            if (obj === null || typeof obj !== 'object') return ul;
+            for (const [k, v] of Object.entries(obj)) {
+                const path = parentPath ? parentPath + '.' + k : k;
+                const li = h('li', { className: 'py-0.5 api-tree-row' });
+                li.appendChild(buildJsonNode(k, v, path));
+                ul.appendChild(li);
+            }
+            return ul;
+        }
+
+        function buildJsonNode(key, value, path) {
+            const branch = isBranchValue(value);
+            const wrapper = h('div', { className: 'flex items-start gap-1' });
+
+            const toggle = h('button', {
+                type: 'button',
+                className: 'w-3 h-3 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-indigo-600 mt-0.5',
+                style: 'font-size:8px;line-height:1',
+                html: branch ? '&#9654;' : ''
+            });
+
+            const label = h('button', {
+                type: 'button',
+                className: 'text-[10.5px] font-mono text-left hover:text-indigo-600 transition-colors flex items-center gap-1.5 min-w-0',
+                title: 'Clicca per inserire {{' + path + '}} nel campo espressione attivo',
+                onclick: () => insertFieldIntoActiveInput('{{' + path + '}}')
+            });
+
+            label.appendChild(h('span', {
+                className: branch ? 'text-indigo-600 font-medium' : 'text-gray-700'
+            }, key));
+
+            if (branch) {
+                const count = Array.isArray(value) ? value.length : Object.keys(value).length;
+                label.appendChild(h('span', { className: 'text-[9px] text-gray-400' },
+                    Array.isArray(value) ? '[' + count + ']' : '{' + count + '}'));
+            } else {
+                label.appendChild(h('span', { className: 'text-gray-400 truncate' },
+                    '= ' + formatValuePreview(value)));
+            }
+
+            wrapper.appendChild(toggle);
+            wrapper.appendChild(label);
+            const container = h('div', {}, wrapper);
+
+            if (branch) {
+                const childHost = h('div', { className: 'hidden' });
+                childHost.appendChild(buildJsonTree(value, path, 0));
+                container.appendChild(childHost);
+
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const open = !childHost.classList.contains('hidden');
+                    childHost.classList.toggle('hidden', open);
+                    toggle.innerHTML = open ? '&#9654;' : '&#9660;';
+                });
+            }
+            return container;
+        }
+
+        function switchApiView(view) {
+            const tabs = $('api-view-tabs');
+            tabs.querySelectorAll('[data-view]').forEach(b => {
+                b.className = 'text-[10.5px] font-medium px-2.5 py-1 rounded-t-md transition-colors ' +
+                    (b.dataset.view === view ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700');
+            });
+            $('api-tree').hidden = view !== 'tree';
+            $('api-sample').hidden = view !== 'json';
+        }
+
+        function renderApiTreeFromCache() {
+            const root = getActiveRoot();
+            if (!root || !root.api || !root.api.sampleItem) {
+                $('api-view-tabs').hidden = true;
+                $('api-tree').hidden = true;
+                $('api-sample').hidden = true;
+                return;
+            }
+
+            const tabs = $('api-view-tabs');
+            tabs.hidden = false;
+            tabs.innerHTML = '';
+            [['tree', 'Struttura'], ['json', 'JSON']].forEach(([view, label], i) => {
+                tabs.appendChild(h('button', {
+                    type: 'button',
+                    dataset: { view },
+                    className: 'text-[10.5px] font-medium px-2.5 py-1 rounded-t-md transition-colors ' +
+                        (i === 0 ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'),
+                    onclick: () => switchApiView(view)
+                }, label));
+            });
+
+            const treeEl = $('api-tree');
+            treeEl.innerHTML = '';
+            treeEl.appendChild(buildJsonTree(root.api.sampleItem));
+            $('api-sample').textContent = JSON.stringify(root.api.sampleItem, null, 2);
+            switchApiView('tree');
+        }
+
+        async function loadAPI() {
+            const root = getActiveRoot();
+            if (!root) return;
+
+            const url = $('api-input').value.trim();
+            const statusEl = $('api-dialog-status');
+            const loadBtn = $('btn-api-load');
+
+            if (!url) { statusEl.innerHTML = '<span class="text-red-500">Inserisci un URL.</span>'; return; }
+
+            loadBtn.disabled = true;
+            loadBtn.textContent = 'Carico…';
+            statusEl.innerHTML = '<span class="text-gray-400">Recupero dati…</span>';
+            $('api-sample').hidden = true;
+            $('api-tree').hidden = true;
+
+            try {
+                const testUrl = url.replace(/:([a-zA-Z_][a-zA-Z0-9_]*)/g, '1');
+                const res = await fetch(testUrl, { headers: { 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const data = await res.json();
+                const arr = Array.isArray(data) ? data : [data];
+                if (arr.length === 0 || typeof arr[0] !== 'object') throw new Error('Dati non validi');
+
+                const fields = flattenPaths(arr[0]);
+                root.api = { url, fields, sampleItem: arr[0], sampleData: arr };
+
+                renderApiTreeFromCache();
+                statusEl.innerHTML = `<span class="text-emerald-600">✓ ${fields.length} campi rilevati.</span>`;
+
+                refreshAll();
+                renderFilters();
+                history.push('Carica API');
+                toast(`${fields.length} campi caricati`);
+            } catch (err) {
+                statusEl.innerHTML = `<span class="text-red-500">Errore: ${escapeHtml(err.message)}</span>`;
+                toast('Errore API: ' + err.message, true);
+            } finally {
+                loadBtn.disabled = false;
+                loadBtn.textContent = 'Carica';
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // FILTRI
+        // ---------------------------------------------------------------
+        const OPERATORS = [
+            { value: '===',        label: '=  uguale' },
+            { value: '!==',        label: '≠  diverso' },
+            { value: '>',          label: '>  maggiore' },
+            { value: '<',          label: '<  minore' },
+            { value: '>=',         label: '≥  maggiore uguale' },
+            { value: '<=',         label: '≤  minore uguale' },
+            { value: '.includes',  label: '⊃  contiene' },
+            { value: '.startsWith',label: '↦  inizia con' },
+            { value: '.endsWith',  label: '↤  finisce con' }
+        ];
+
+        function renderFilters() {
+            filtersHost.innerHTML = '';
+            const root = getActiveRoot();
+            if (!root || !root.api) {
+                filtersHost.appendChild(h('div', { className: 'text-[11px] text-gray-400 italic text-center py-3 px-3 bg-gray-50 rounded-lg' },
+                    !root ? 'Nessuna radice.' : 'Carica prima un URL per abilitare i filtri.'
+                ));
+                return;
+            }
+            if (root.filters.length === 0) {
+                filtersHost.appendChild(h('div', { className: 'text-[11px] text-gray-400 italic text-center py-3 px-3 bg-gray-50 rounded-lg' }, 'Nessun filtro configurato.'));
+                return;
+            }
+            root.filters.forEach((f, i) => filtersHost.appendChild(buildFilterCard(f, i, root)));
+        }
+
+        function buildFilterCard(filter, index, root) {
+            const isDisabled = filter.enabled === false;
+
+            const upBtn = h('button', {
+                type: 'button',
+                title: 'Sposta su',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors' + (index === 0 ? ' opacity-30 pointer-events-none' : ''),
+                onclick: () => {
+                    [root.filters[index - 1], root.filters[index]] = [root.filters[index], root.filters[index - 1]];
+                    renderFilters();
+                    history.push('Riordina filtri');
+                },
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="18 15 12 9 6 15"/></svg>'
+            });
+            const dnBtn = h('button', {
+                type: 'button',
+                title: 'Sposta giù',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors' + (index === root.filters.length - 1 ? ' opacity-30 pointer-events-none' : ''),
+                onclick: () => {
+                    [root.filters[index], root.filters[index + 1]] = [root.filters[index + 1], root.filters[index]];
+                    renderFilters();
+                    history.push('Riordina filtri');
+                },
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg>'
+            });
+            const toggleBtn = h('button', {
+                type: 'button',
+                title: isDisabled ? 'Attiva' : 'Disattiva',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors',
+                onclick: () => {
+                    filter.enabled = isDisabled ? true : false;
+                    renderFilters();
+                    renderApiBar();
+                    history.push('Toggle filtro');
+                },
+                html: isDisabled
+                    ? '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></svg>'
+                    : '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>'
+            });
+            const dupBtn = h('button', {
+                type: 'button',
+                title: 'Duplica filtro',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors',
+                onclick: () => {
+                    root.filters.splice(index + 1, 0, JSON.parse(JSON.stringify(filter)));
+                    renderFilters();
+                    renderApiBar();
+                    history.push('Duplica filtro');
+                },
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+            });
+            const rmBtn = h('button', {
+                type: 'button',
+                className: 'w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors',
+                onclick: () => {
+                    const p = paramFromValue(filter.value);
+                    root.filters.splice(index, 1);
+                    if (p && !isParamUsedByOthers(p, null)) removeParamFromPattern(p);
+                    renderFilters();
+                    renderApiBar();
+                    history.push('Rimuovi filtro');
+                },
+                html: '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>'
+            });
+
+            const card = h('div', { className: 'filter-card' + (isDisabled ? ' fc-disabled' : '') },
+                h('div', { className: 'fc-head' },
+                    h('span', { className: 'fc-type' }, filter.type),
+                    h('span', { className: 'flex-1 text-[10px] text-gray-400 font-mono truncate' }, summarizeFilter(filter)),
+                    upBtn, dnBtn, toggleBtn, dupBtn, rmBtn
+                )
+            );
+
+            if (filter.type === 'where')  buildWhereBody(card, filter, root);
+            if (filter.type === 'sort')   buildSortBody(card, filter, root);
+            if (filter.type === 'limit')  buildLimitBody(card, filter);
+            if (filter.type === 'unique') buildUniqueBody(card, filter, root);
+            if (filter.type === 'map')    buildMapBody(card, filter, root);
+
+            return card;
+        }
+
+        function summarizeFilter(f) {
+            if (f.type === 'where') {
+                const val = f.value || '';
+                const right = val.startsWith(':') ? `params.${val.slice(1)}` : (val || '?');
+                return `item.${f.field} ${f.op}${right}`;
+            }
+            if (f.type === 'sort')   return `${f.field}${f.ascending ? '↑' : '↓'}`;
+            if (f.type === 'limit')  return `top ${f.count}`;
+            if (f.type === 'unique') return `unique by ${f.field}`;
+            if (f.type === 'map')    return `keep ${f.fields?.length || 0} fields`;
+            return '';
+        }
+
+        function buildWhereBody(card, filter, root) {
+            const fields = root.api?.fields || [];
+
+            const colSel = h('select', {
+                    onchange: (e) => {
+                        const oldField = filter.field;
+                        const oldValue = (filter.value || '').trim();
+                        const oldParam = paramFromValue(oldValue);
+                        const oldDefault = oldField ? ':' + oldField : '';
+
+                        filter.field = e.target.value;
+                        if (!oldValue || oldValue === oldDefault) {
+                            filter.value = ':' + filter.field;
+                            if (oldParam && oldParam !== filter.field) {
+                                if (!replaceParamInPattern(oldParam, filter.field)) addParamToPattern(filter.field);
+                            } else if (filter.field) {
+                                addParamToPattern(filter.field);
+                            }
+                        }
+                        renderFilters();
+                        history.push('Modifica filtro');
+                    }
+                },
+                h('option', { value: '' }, '— seleziona —'),
+                ...fields.map(f => h('option', { value: f, selected: filter.field === f }, f))
+            );
+
+            const opSel = h('select', {
+                onchange: (e) => { filter.op = e.target.value; history.push('Modifica filtro'); }
+            }, ...OPERATORS.map(op => h('option', { value: op.value, selected: filter.op === op.value }, op.label)));
+
+            const valInp = h('input', {
+                type: 'text',
+                value: filter.value ?? '',
+                placeholder: ':' + (filter.field || 'id') + '  ·  valore',
+                onchange: (e) => {
+                    const oldParam = paramFromValue(filter.value);
+                    const newParam = paramFromValue(e.target.value);
+                    filter.value = e.target.value;
+                    if (oldParam && !newParam && !isParamUsedByOthers(oldParam, filter)) removeParamFromPattern(oldParam);
+                    else if (oldParam && newParam && oldParam !== newParam) replaceParamInPattern(oldParam, newParam);
+                    else if (!oldParam && newParam) addParamToPattern(newParam);
+                    renderFilters();
+                    history.push('Modifica filtro');
+                }
+            });
+
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Colonna'), colSel));
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Operatore'), opSel));
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Valore'), valInp));
+
+            const preview = h('div', { className: 'text-[10px] font-mono text-indigo-600 mt-2 truncate' });
+            function updateFilterPreview() {
+                const val = (filter.value || '').trim();
+                const right = val.startsWith(':') ? 'params.' + val.slice(1) : JSON.stringify(val);
+                preview.textContent = '→ item.' + (filter.field || '?') + ' ' + filter.op + ' ' + right;
+            }
+            updateFilterPreview();
+            valInp.addEventListener('input', () => { filter.value = valInp.value; updateFilterPreview(); });
+            card.appendChild(preview);
+        }
+
+        function buildSortBody(card, filter, root) {
+            const fields = root.api?.fields || [];
+            const sel = h('select', { onchange: (e) => { filter.field = e.target.value; history.push('Modifica sort'); } },
+                h('option', { value: '' }, '— seleziona —'),
+                ...fields.map(f => h('option', { value: f, selected: filter.field === f }, f))
+            );
+            const dir = h('select', { onchange: (e) => { filter.ascending = e.target.value === '1'; history.push('Modifica sort'); } },
+                h('option', { value: '1', selected: filter.ascending !== false }, '↑ Crescente'),
+                h('option', { value: '0', selected: filter.ascending === false }, '↓ Decrescente')
+            );
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Colonna'), sel));
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Direzione'), dir));
+        }
+
+        function buildLimitBody(card, filter) {
+            const inp = h('input', {
+                type: 'text',
+                value: filter.count ?? 10,
+                oninput: (e) => { filter.count = parseInt(e.target.value, 10) || 0; },
+                onchange: () => history.push('Modifica limit')
+            });
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Numero massimo'), inp));
+        }
+
+        function buildUniqueBody(card, filter, root) {
+            const fields = (root.api?.fields || []).filter(f => !f.includes('.'));
+            const sel = h('select', { onchange: (e) => { filter.field = e.target.value; history.push('Modifica unique'); } },
+                h('option', { value: '' }, '— seleziona —'),
+                ...fields.map(f => h('option', { value: f, selected: filter.field === f }, f))
+            );
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Colonna unica'), sel));
+            if (fields.length === 0) {
+                card.appendChild(h('div', { className: 'text-[10px] text-amber-600 italic mt-1' },
+                    'Nessun campo di primo livello disponibile.'));
+            }
+        }
+
+        function buildMapBody(card, filter, root) {
+            const fields = (root.api?.fields || []).filter(f => !f.includes('.'));
+            if (!filter.fields) filter.fields = [];
+            const grid = h('div', { className: 'grid grid-cols-2 gap-1' });
+
+            fields.forEach(f => {
+                const cb = h('input', {
+                    type: 'checkbox',
+                    checked: filter.fields.includes(f),
+                    onchange: (e) => {
+                        if (e.target.checked) { if (!filter.fields.includes(f)) filter.fields.push(f); }
+                        else filter.fields = filter.fields.filter(x => x !== f);
+                        history.push('Modifica map');
+                    }
+                });
+                grid.appendChild(h('label', { className: 'flex items-center gap-1.5 text-[10.5px] text-gray-600 cursor-pointer' }, cb, f));
+            });
+            card.appendChild(h('div', { className: 'fc-row' }, h('label', {}, 'Campi da mantenere'), grid));
+        }
+
+        $('btn-add-filter').addEventListener('click', (e) => {
+            e.preventDefault();
+            const root = getActiveRoot();
+            if (!root?.api) { toast('Carica prima un API.', true); return; }
+
+            $('dlg-api').querySelectorAll('.__vc-filter-menu').forEach(n => n.remove());
+
+            const menu = h('div', { className: '__vc-filter-menu' },
+                ...[
+                    { t: 'where',  label: 'Where — filtra' },
+                    { t: 'sort',   label: 'Sort — ordina' },
+                    { t: 'limit',  label: 'Limit — limita' },
+                    { t: 'unique', label: 'Unique — deduplica' },
+                    { t: 'map',    label: 'Map — trasforma' }
+                ].map(opt => h('button', {
+                    type: 'button',
+                    onclick: () => { menu.remove(); addFilter(opt.t); }
+                }, opt.label))
+            );
+            $('dlg-api').appendChild(menu);
+            const aRect = e.currentTarget.getBoundingClientRect();
+            const dRect = $('dlg-api').getBoundingClientRect();
+            menu.style.left = (aRect.left - dRect.left) + 'px';
+            menu.style.top = (aRect.bottom - dRect.top + 4) + 'px';
+
+            setTimeout(() => {
+                const close = (ev) => {
+                    if (!menu.contains(ev.target)) {
+                        menu.remove();
+                        document.removeEventListener('mousedown', close, true);
+                    }
+                };
+                document.addEventListener('mousedown', close, true);
+            }, 0);
+        });
+
+        function addFilter(type) {
+            const root = getActiveRoot();
+            if (!root?.api) return;
+            const firstField = root.api.fields[0] || '';
+
+            if (type === 'where') {
+                root.filters.push({ type: 'where', field: firstField, op: '===', value: ':' + firstField, enabled: true });
+                if (firstField) addParamToPattern(firstField);
+            } else if (type === 'sort') {
+                root.filters.push({ type: 'sort', field: firstField, ascending: true, enabled: true });
+            } else if (type === 'limit') {
+                root.filters.push({ type: 'limit', count: 10, enabled: true });
+            } else if (type === 'unique') {
+                root.filters.push({ type: 'unique', field: firstField, enabled: true });
+            } else if (type === 'map') {
+                root.filters.push({ type: 'map', fields: [], enabled: true });
+            }
+            renderFilters();
+            renderApiBar();
+            history.push('Aggiungi filtro');
+        }
+
+        // ---------------------------------------------------------------
+        // PREVIEW (bind)
+        // ---------------------------------------------------------------
+        function buildLiveMappingForRoot(root) {
+            const out = {};
+            for (const [rel, m] of root.mappings) {
+                const props = {};
+                m.props.forEach(p => {
+                    if (p.property && (p.expression || '').trim()) {
+                        const live = expressionToLive(p.expression);
+                        if (live != null) props[p.property] = live;
+                    }
+                });
+                if (Object.keys(props).length > 0) out[rel] = props;
+            }
+            return out;
+        }
+
+        function updateModeButtons() {
+            document.querySelectorAll('[data-mode]').forEach(b => {
+                b.className = `px-3.5 py-1.5 text-xs font-medium rounded-md transition-colors ${b.dataset.mode === state.mode ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`;
+            });
+        }
+
+        async function setMode(mode) {
+            state.mode = mode;
+            updateModeButtons();
+            await renderCanvas();
+            if (mode === 'edit') {
+                instrument();
+                reattachRootNodes();
+                refreshAll();
+            } else {
+                try {
+                    await ensureFramework();
+                    await runBind();
+                    toast('Anteprima generata');
+                } catch (err) {
+                    toast('Errore anteprima: ' + err.message, true);
+                    const doc = iframe.contentDocument;
+                    if (doc && doc.body) {
+                        doc.body.innerHTML = `<div style="padding:24px;font-family:system-ui;color:#dc2626">
+                            <div style="font-weight:600;margin-bottom:6px">Errore anteprima</div>
+                            <div style="font-size:13px;color:#6b7280">${escapeHtml(err.message)}</div>
+                        </div>`;
+                    }
+                }
+            }
+            renderRouteBar();
+        }
+
+        function reattachRootNodes() {
+            const doc = iframe.contentDocument;
+            if (!doc) return;
+            const toRemove = [];
+            for (const [sel, entry] of state.roots) {
+                const node = doc.querySelector(sel);
+                if (node) entry.node = node;
+                else toRemove.push(sel);
+            }
+            toRemove.forEach(sel => {
+                state.roots.delete(sel);
+                if (state.activeRootSelector === sel) state.activeRootSelector = null;
+            });
+            if (state.activeRootSelector && state.roots.get(state.activeRootSelector)?.node) {
+                doc.querySelectorAll('.__vc-root').forEach(n => n.classList.remove('__vc-root'));
+                state.roots.get(state.activeRootSelector).node.classList.add('__vc-root');
+            }
+            state.selected = null;
+            updateToolbar(null);
+        }
+
+        // Sorgenti del framework, in ordine di priorità:
+        //  1) copia locale nel repo (../src/visualcompose.js): l'editor usa sempre
+        //     la versione del framework che sta nello stesso commit;
+        //  2) CDN jsDelivr (versione fissata) come ripiego.
+        function vcSources() {
+            const local = new URL('../src/visualcompose.js', location.href).href;
+            return [local, vcCdnUrl()];
+        }
+        function vcCdnUrl() {
+            return VC_CDN_URL;
+        }
+
+        async function ensureFramework() {
+            const win = iframe.contentWindow;
+            if (win.VisualCompose) return;
+            const s = iframe.contentDocument.createElement('script');
+            s.type = 'module';
+            s.textContent = `(async () => {
+                for (const u of ${JSON.stringify(vcSources())}) {
+                    try {
+                        const m = await import(u);
+                        window.VisualCompose = m.default || m.VisualCompose;
+                        window.__vcSource = u;
+                        return;
+                    } catch (e) { /* prova la sorgente successiva */ }
+                }
+                window.__vcLoadFailed = true;
+            })();`;
+            iframe.contentDocument.head.appendChild(s);
+
+            await new Promise((resolve, reject) => {
+                const t0 = Date.now();
+                const check = () => {
+                    if (win.VisualCompose) resolve();
+                    else if (win.__vcLoadFailed) reject(new Error('Impossibile caricare VisualCompose (né dal repo né dal CDN)'));
+                    else if (Date.now() - t0 > 8000) reject(new Error('Timeout: impossibile caricare VisualCompose'));
+                    else setTimeout(check, 50);
+                };
+                check();
+            });
+        }
+
+        async function runBind() {
+            if (state.roots.size === 0) {
+                throw new Error(
+                    'Nessuna radice configurata. ' +
+                    'Seleziona un elemento nel canvas per usarlo come radice (diventa viola).'
+                );
+            }
+
+            const vc = new (iframe.contentWindow.VisualCompose)();
+            const params = {};
+            extractParams(state.routePattern || '').forEach(p => {
+                params[p] = state.previewParamValues[p] || '1';
+            });
+            vc.router.currentParams = params;
+
+            let bound = 0;
+            let rootsWithMapping = 0;
+            let rootsWithoutMapping = 0;
+            let rootsWithMappingNoApi = 0;
+
+            for (const [sel, entry] of state.roots) {
+                const liveMapping = buildLiveMappingForRoot(entry);
+                if (!Object.keys(liveMapping).length) {
+                    rootsWithoutMapping++;
+                    continue;
+                }
+                rootsWithMapping++;
+
+                if (!entry.api?.sampleData) {
+                    rootsWithMappingNoApi++;
+                    continue;
+                }
+
+                const data = applyPreviewFilters(entry.api.sampleData, entry, params);
+                await vc.bind(sel, () => data, liveMapping, {
+                    loading: 'Caricamento…',
+                    empty: '<div style="padding:20px;text-align:center;opacity:.6">Nessun dato.</div>',
+                    error: '<div style="padding:20px;text-align:center;color:#dc2626">Errore.</div>'
+                });
+                bound++;
+            }
+
+            if (bound > 0) return;
+
+            if (rootsWithMapping === 0 && rootsWithMappingNoApi === 0) {
+                throw new Error(
+                    'Nessuna proprietà mappata. ' +
+                    'Apri "Mappatura", seleziona un nodo nel canvas e compila il campo espressione ' +
+                    '(es. clicca un "Campo rapido" o scrivi {{id}}).'
+                );
+            }
+
+            if (rootsWithMappingNoApi > 0 && rootsWithMappingNoApi === rootsWithMapping) {
+                throw new Error(
+                    'Mappature configurate ma nessuna API caricata. ' +
+                    'Apri "Mappatura" → "Imposta API" e carica un URL JSON.'
+                );
+            }
+
+            throw new Error(
+                'Nessuna radice pronta per l\'anteprima. ' +
+                'Verifica che almeno una radice abbia API caricata e almeno una proprietà con espressione.'
+            );
+        }
+
+        function applyPreviewFilters(data, entry, params) {
+            let result = Array.isArray(data) ? data.slice() : [data];
+            for (const f of entry.filters || []) {
+                if (f.enabled === false) continue;
+                if (f.type === 'where' && f.field && (f.value || '').trim()) {
+                    const isParam = f.value.startsWith(':');
+                    const right = isParam ? params[f.value.slice(1)] : autoLiteralValue(f.value);
+                    result = result.filter(item => {
+                        const v = getPath(item, f.field);
+                        if (f.op === '.includes')   return typeof v === 'string' && v.includes(right);
+                        if (f.op === '.startsWith') return typeof v === 'string' && v.startsWith(right);
+                        if (f.op === '.endsWith')   return typeof v === 'string' && v.endsWith(right);
+                        if (f.op === '===') return v === right || String(v) === String(right);
+                        if (f.op === '!==') return v !== right;
+                        if (f.op === '>')   return v > right;
+                        if (f.op === '<')   return v < right;
+                        if (f.op === '>=')  return v >= right;
+                        if (f.op === '<=')  return v <= right;
+                        return false;
+                    });
+                } else if (f.type === 'sort') {
+                    result.sort((a, b) => {
+                        const av = getPath(a, f.field);
+                        const bv = getPath(b, f.field);
+                        return f.ascending !== false ? (av > bv ? 1 : av < bv ? -1 : 0)
+                            : (bv > av ? 1 : bv < av ? -1 : 0);
+                    });
+                } else if (f.type === 'limit') {
+                    result = result.slice(0, f.count || 10);
+                } else if (f.type === 'unique') {
+                    const seen = new Set();
+                    result = result.filter(item => {
+                        const k = getPath(item, f.field);
+                        if (k === undefined || k === null || seen.has(k)) return false;
+                        seen.add(k);
+                        return true;
+                    });
+                } else if (f.type === 'map' && f.fields?.length) {
+                    result = result.map(item => {
+                        const o = {};
+                        f.fields.forEach(k => { o[k] = getPath(item, k); });
+                        return o;
+                    });
+                }
+            }
+            return result;
+        }
+
+        function autoLiteralValue(val) {
+            if (val === 'true') return true;
+            if (val === 'false') return false;
+            if (val === 'null') return null;
+            return /^-?\d+(\.\d+)?$/.test(val) ? parseFloat(val) : val;
+        }
+
+        // ---------------------------------------------------------------
+        // MODAL HTML
+        // ---------------------------------------------------------------
+        document.querySelectorAll('[data-close]').forEach(btn => {
+            btn.addEventListener('click', () => btn.closest('dialog')?.close());
+        });
+
+        $('btn-html').addEventListener('click', () => {
+            syncStateFromIframe();
+            $('html-input').value = state.html;
+            $('dlg-html').showModal();
+        });
+
+        $('btn-html-save').addEventListener('click', async () => {
+            state.html = $('html-input').value;
+            $('dlg-html').close();
+            state.roots.clear();
+            state.activeRootSelector = state.selected = null;
+            state.routePattern = '';
+            state.treeCollapsed.clear();
+            await renderCanvas();
+            instrument();
+            refreshAll();
+            history.push('Modifica HTML');
+            toast('HTML aggiornato');
+        });
+
+        $('btn-api-load').addEventListener('click', loadAPI);
+        $('api-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); loadAPI(); }
+        });
+
+        document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+
+        // ---------------------------------------------------------------
+        // SCORCIATOIE DA TASTIERA
+        // ---------------------------------------------------------------
+        document.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            const inInput = ['INPUT','TEXTAREA','SELECT'].includes(active?.tagName) || active?.isContentEditable;
+            const inDialog = active?.closest?.('dialog[open]');
+
+            if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) {
+                if (inInput && !e.shiftKey) {
+                    const isEditorInput = active.closest?.('#props-host, #dlg-api, #route-pattern, #html-input');
+                    if (!isEditorInput) return;
+                }
+                e.preventDefault();
+                if (e.shiftKey) history.redo();
+                else history.undo();
+                return;
+            }
+
+            if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) {
+                e.preventDefault();
+                history.redo();
+                return;
+            }
+
+            if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) {
+                if (state.selected) {
+                    e.preventDefault();
+                    duplicateNode(state.selected);
+                }
+                return;
+            }
+
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                setMode(state.mode === 'edit' ? 'preview' : 'edit');
+                return;
+            }
+
+            if (inInput || inDialog) return;
+
+            if (e.key === 'Escape') {
+                if (state.selected) { selectNode(null); e.preventDefault(); }
+                closeContextMenu();
+                document.querySelectorAll('.prop-menu').forEach(m => m.remove());
+                return;
+            }
+
+            if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected) {
+                e.preventDefault();
+                deleteNode(state.selected);
+                return;
+            }
+
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && state.selected) {
+                e.preventDefault();
+                const root = getActiveRoot();
+                if (!root) return;
+                const allNodes = [root.node, ...root.node.querySelectorAll('*')].filter(n => !SKIP.has(n.tagName));
+                const idx = allNodes.indexOf(state.selected);
+                if (idx < 0) return;
+                const next = allNodes[idx + (e.key === 'ArrowUp' ? -1 : 1)];
+                if (next) {
+                    selectNode(next);
+                    try { next.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch {}
+                }
+                return;
+            }
+
+            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && state.selected) {
+                e.preventDefault();
+                moveNode(state.selected, e.key === 'ArrowUp' ? -1 : 1);
+                return;
+            }
+        });
+
+        // ---------------------------------------------------------------
+        // INIT
+        // ---------------------------------------------------------------
+        (async function init() {
+            if (LOAD_ERROR) toast(LOAD_ERROR, true);
+            state.html = INITIAL_HTML || '';
+            state.head = INITIAL_HEAD || '';
+            state.mode = 'edit';
+            updateModeButtons();
+            updateMappingBadge();
+            await renderCanvas();
+            instrument();
+
+            let restoredConfig = false;
+            if (INITIAL_CONFIG) {
+                try {
+                    const cfg = JSON.parse(INITIAL_CONFIG);
+                    restoredConfig = restoreConfig(cfg);
+                } catch (err) {
+                    console.warn('[VisualCompose] Config non valida:', err);
+                }
+            }
+
+            refreshAll();
+            history.pushNow('Stato iniziale');
+            autosave.start();
+            updateDraftBadge();
+
+            if (restoredConfig) {
+                $('config-badge').classList.remove('hidden');
+                setTimeout(() => $('config-badge').classList.add('hidden'), 4000);
+                toast(`Config ripristinata (${state.roots.size} radici)`);
+            }
+
+            setTimeout(() => {
+                hint('Ctrl+Z annulla · Doppio click = radice · Click destro = menu', 5000);
+            }, 1200);
+        })();
+
+    })();
+</script>
+</body>
+</html>
