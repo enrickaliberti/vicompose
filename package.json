@@ -36,7 +36,7 @@
     "vitest": "^3.0.0"
   },
   "engines": { "node": ">=18" },
-  "repository": { "type": "git", "url": "git+https://github.com/YOUR-USERNAME/visualcompose.git" },
-  "bugs": { "url": "https://github.com/YOUR-USERNAME/visualcompose/issues" },
-  "homepage": "https://YOUR-USERNAME.github.io/visualcompose/"
+  "repository": { "type": "git", "url": "git+https://github.com/enrickaliberti/visualcompose.git" },
+  "bugs": { "url": "https://github.com/enrickaliberti/visualcompose/issues" },
+  "homepage": "https://enrickaliberti.github.io/visualcompose/"
 }
