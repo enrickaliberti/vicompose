@@ -1114,6 +1114,8 @@
             const doc = iframe.contentDocument;
             if (!doc) return;
 
+            doc.addEventListener('keydown', onEditorKeydown);
+
             if (doc.defaultView) {
                 doc.defaultView.addEventListener('scroll', () => { if (state.selected) updateToolbar(state.selected); });
                 doc.defaultView.addEventListener('resize', () => { if (state.selected) updateToolbar(state.selected); });
@@ -2946,8 +2948,13 @@
         // ---------------------------------------------------------------
         // SCORCIATOIE DA TASTIERA
         // ---------------------------------------------------------------
-        document.addEventListener('keydown', (e) => {
-            const active = document.activeElement;
+        // Gestore unico: registrato sia sul documento principale sia su quello
+        // dell'iframe (dopo un click nel canvas il focus è dentro l'iframe e
+        // gli eventi da tastiera non risalgono alla pagina principale).
+        function onEditorKeydown(e) {
+            const active = (e.target && e.target.ownerDocument !== document)
+                ? e.target
+                : document.activeElement;
             const inInput = ['INPUT','TEXTAREA','SELECT'].includes(active?.tagName) || active?.isContentEditable;
             const inDialog = active?.closest?.('dialog[open]');
 
@@ -3017,7 +3024,8 @@
                 moveNode(state.selected, e.key === 'ArrowUp' ? -1 : 1);
                 return;
             }
-        });
+        }
+        document.addEventListener('keydown', onEditorKeydown);
 
         // ---------------------------------------------------------------
         // INIT
