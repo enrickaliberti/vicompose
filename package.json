@@ -1,0 +1,42 @@
+{
+  "name": "visualcompose",
+  "version": "0.1.0",
+  "description": "Zero-dependency micro-framework for HTML-first apps: URL router, template stamping, fluent API client and declarative data binding. No build step required.",
+  "keywords": ["framework", "micro-framework", "router", "templates", "data-binding", "html-first", "no-build", "spa", "mpa", "esm"],
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/visualcompose.js",
+  "module": "./dist/visualcompose.js",
+  "types": "./dist/types/visualcompose.d.ts",
+  "unpkg": "./dist/visualcompose.min.js",
+  "jsdelivr": "./dist/visualcompose.min.js",
+  "exports": {
+    ".": {
+      "types": "./dist/types/visualcompose.d.ts",
+      "import": "./dist/visualcompose.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": ["dist", "src", "README.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "types": "tsc -p tsconfig.types.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "serve": "npx --yes http-server . -p 8080 -c-1",
+    "size": "node scripts/size.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "git+https://github.com/YOUR-USERNAME/visualcompose.git" },
+  "bugs": { "url": "https://github.com/YOUR-USERNAME/visualcompose/issues" },
+  "homepage": "https://YOUR-USERNAME.github.io/visualcompose/"
+}

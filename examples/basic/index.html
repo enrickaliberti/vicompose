@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VisualCompose · basic example</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: .75rem 1rem; margin: .5rem 0; }
+    .vc-loading { color: #888; } .vc-error { color: #b00020; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <h1>VisualCompose</h1>
+
+  <!-- VIEW: list. The first .card is the visible "mould": it is cloned once per user and then removed. -->
+  <section id="view-list" hidden>
+    <h2>Users</h2>
+    <div id="list">
+      <div class="card"><a class="link"><strong class="name"></strong></a> — <span class="role"></span></div>
+    </div>
+  </section>
+
+  <!-- VIEW: detail. Container mode: #detail is emptied and filled from <template>. -->
+  <section id="view-detail" hidden>
+    <p><a href="#/">← back</a></p>
+    <div id="detail"></div>
+    <template id="tpl-detail">
+      <h2 class="name"></h2>
+      <p><span class="role"></span> · <a class="mail"></a></p>
+    </template>
+  </section>
+
+  <section id="view-404" hidden><h2>404</h2><a href="#/">Home</a></section>
+
+  <script type="module">
+    import { VisualCompose } from '../../src/visualcompose.js';   // or from a CDN: see README
+
+    const app = VisualCompose.create({ mode: 'mpa' });
+    const show = (id) => document.querySelectorAll('section').forEach((s) => (s.hidden = s.id !== id));
+
+    app
+      .route('#/', {
+        async onEnter() {
+          show('view-list');
+          await app.bind('#list .card', './users.json', {
+            '.name': 'name',
+            '.role': 'role',
+            '.link': { href: (u) => `#/user/${u.id}` }
+          }, { loading: 'Loading…', empty: '<p>No users.</p>' });
+        }
+      })
+      .route('#/user/:id', {
+        async onEnter() {
+          show('view-detail');
+          await app.bind('#detail', app.table('./users.json').where((u) => String(u.id) === app.getParam('id')), {
+            '.name': 'name',
+            '.role': 'role',
+            '.mail': { href: (u) => `mailto:${u.email}`, text: 'email' }
+          }, { template: '#tpl-detail', empty: '<p>User not found.</p>' });
+        }
+      })
+      .route('#/*', { onEnter: () => show('view-404') });
+
+    app.start();
+  </script>
+</body>
+</html>
